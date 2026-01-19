@@ -145,7 +145,28 @@ def load_bronze_patient(db_path: Path) -> pl.LazyFrame:
     ).lazy()
 
 
-def transform_patient(bronze_df: pl.DataFrame) -> pl.LazyFrame:
+SILVER_PATIENT_SCHEMA = {
+    "id": pl.String,
+    "source_file": pl.String,
+    "source_bundle": pl.String,
+    "family_name": pl.String,
+    "given_names": pl.String,
+    "full_name": pl.String,
+    "birth_date": pl.String,
+    "gender": pl.String,
+    "phone": pl.String,
+    "address_line": pl.String,
+    "city": pl.String,
+    "postal_code": pl.String,
+    "country": pl.String,
+    "nationality_code": pl.String,
+    "identifier_eci": pl.String,
+    "identifier_mr": pl.String,
+    "validation_errors": pl.List(pl.String),
+}
+
+
+def transform_patient(bronze_df: pl.DataFrame) -> SilverPatient:
     """
     Transform bronze patient DataFrame to silver format.
 
@@ -153,32 +174,12 @@ def transform_patient(bronze_df: pl.DataFrame) -> pl.LazyFrame:
         bronze_df: Polars DataFrame with bronze patient data
 
     Returns:
-        Polars LazyFrame with silver patient data
+        SilverPatient TypedLazyFrame with validated silver patient data
     """
     bronze_rows = bronze_df.to_dicts()
     silver_rows = [transform_patient_row(row) for row in bronze_rows]
 
-    schema = {
-        "id": pl.String,
-        "source_file": pl.String,
-        "source_bundle": pl.String,
-        "family_name": pl.String,
-        "given_names": pl.String,
-        "full_name": pl.String,
-        "birth_date": pl.String,
-        "gender": pl.String,
-        "phone": pl.String,
-        "address_line": pl.String,
-        "city": pl.String,
-        "postal_code": pl.String,
-        "country": pl.String,
-        "nationality_code": pl.String,
-        "identifier_eci": pl.String,
-        "identifier_mr": pl.String,
-        "validation_errors": pl.List(pl.String),
-    }
-
-    return pl.DataFrame(silver_rows, schema=schema).lazy()
+    return SilverPatient.from_dicts(silver_rows, SILVER_PATIENT_SCHEMA)
 
 
 def save_silver_patient(silver_lf: pl.LazyFrame, db_path: Path) -> int:
@@ -211,18 +212,18 @@ def save_silver_patient(silver_lf: pl.LazyFrame, db_path: Path) -> int:
     return row_count
 
 
-def get_patient_summary(silver_lf: pl.LazyFrame) -> dict[str, int]:
+def get_patient_summary(silver_lf: SilverPatient | pl.LazyFrame) -> dict[str, int]:
     """Get summary statistics for silver patient data."""
     return (
         silver_lf.select(
             pl.len().alias("total_patients"),
-            pl.col("family_name").drop_nulls().len().alias("with_family_name"),
-            pl.col("given_names").drop_nulls().len().alias("with_given_names"),
-            pl.col("birth_date").drop_nulls().len().alias("with_birth_date"),
-            pl.col("gender").drop_nulls().len().alias("with_gender"),
-            pl.col("phone").drop_nulls().len().alias("with_phone"),
-            pl.col("city").drop_nulls().len().alias("with_city"),
-            pl.col("nationality_code").drop_nulls().len().alias("with_nationality"),
+            SilverPatient.family_name.drop_nulls().len().alias("with_family_name"),
+            SilverPatient.given_names.drop_nulls().len().alias("with_given_names"),
+            SilverPatient.birth_date.drop_nulls().len().alias("with_birth_date"),
+            SilverPatient.gender.drop_nulls().len().alias("with_gender"),
+            SilverPatient.phone.drop_nulls().len().alias("with_phone"),
+            SilverPatient.city.drop_nulls().len().alias("with_city"),
+            SilverPatient.nationality_code.drop_nulls().len().alias("with_nationality"),
         )
         .collect()
         .to_dicts()[0]
