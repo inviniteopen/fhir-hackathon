@@ -7,11 +7,11 @@ from typing import Any
 import duckdb
 import pyarrow as pa
 
-BRONZE_SCHEMA = "bronze"
+from .constants import BRONZE_SCHEMA
 
 
 def _quote_ident(ident: str) -> str:
-    return f'"{ident.replace("\"", "\"\"")}"'
+    return f'"{ident.replace('"', '""')}"'
 
 
 def _qualified_table(schema: str, table: str) -> str:
@@ -142,7 +142,6 @@ def _create_table(
 
 def get_table_summary(con: duckdb.DuckDBPyConnection) -> dict[str, int]:
     """Get row counts for all tables in the connection."""
-    _ensure_bronze_schema(con)
     table_names = con.execute(
         """
         SELECT table_name
