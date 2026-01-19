@@ -8,4 +8,31 @@ dependencies = [
     "fhir-resources>=8.1.0",
     "pydantic>=2.12.5",
     "pydantic-core>=2.41.5",
+    "duckdb>=1.4.3",
+    "holidays>=0.87",
+    "numpy>=2.4.0",
+    "pandas>=2.3.3",
+    "pandera",
+    "pyarrow>=22.0.0",
+    "wrapt>=2.0.1",
 ]
+
+[dependency-groups]
+test = [
+    "setuptools",
+    "pytest",
+    "pytest-cov",
+    "pytest-mock",
+]
+
+polars = [
+    "polars",
+]
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+addopts = "-ra -q"
+testpaths = ["tests"]
+
+[tool.uv]
+default-groups = ["test", "polars"]
