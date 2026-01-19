@@ -7,6 +7,20 @@ from typing import Any
 import duckdb
 import pyarrow as pa
 
+BRONZE_SCHEMA = "bronze"
+
+
+def _quote_ident(ident: str) -> str:
+    return f'"{ident.replace("\"", "\"\"")}"'
+
+
+def _qualified_table(schema: str, table: str) -> str:
+    return f"{_quote_ident(schema)}.{_quote_ident(table)}"
+
+
+def _ensure_bronze_schema(con: duckdb.DuckDBPyConnection) -> None:
+    con.execute(f"CREATE SCHEMA IF NOT EXISTS {_quote_ident(BRONZE_SCHEMA)}")
+
 
 def load_bundles_to_tables(
     bundle_dir: Path,
@@ -30,6 +44,7 @@ def load_bundles_to_tables(
     """
     if con is None:
         con = duckdb.connect(":memory:")
+    _ensure_bronze_schema(con)
 
     json_files = sorted(bundle_dir.glob("*.json"))
     if not json_files:
@@ -81,6 +96,7 @@ def load_bundle_file(
     """
     if con is None:
         con = duckdb.connect(":memory:")
+    _ensure_bronze_schema(con)
 
     bundle_json = json.loads(bundle_path.read_text())
     bundle_id = bundle_json.get("id")
@@ -116,15 +132,32 @@ def _create_table(
     arrow_table = pa.Table.from_pylist(resources)
     temp_name = f"_temp_{table_name}"
     con.register(temp_name, arrow_table)
-    con.execute(f"CREATE TABLE {table_name} AS SELECT * FROM {temp_name}")
+    _ensure_bronze_schema(con)
+    bronze_table = _qualified_table(BRONZE_SCHEMA, table_name)
+    con.execute(f"CREATE OR REPLACE TABLE {bronze_table} AS SELECT * FROM {temp_name}")
+    legacy_table = _qualified_table("main", table_name)
+    con.execute(f"DROP TABLE IF EXISTS {legacy_table}")
     con.unregister(temp_name)
 
 
 def get_table_summary(con: duckdb.DuckDBPyConnection) -> dict[str, int]:
     """Get row counts for all tables in the connection."""
-    tables = con.execute("SHOW TABLES").fetchdf()
-    summary = {}
-    for table_name in sorted(tables["name"]):
-        count = con.execute(f"SELECT COUNT(*) FROM {table_name}").fetchone()[0]
-        summary[table_name] = count
+    _ensure_bronze_schema(con)
+    table_names = con.execute(
+        """
+        SELECT table_name
+        FROM information_schema.tables
+        WHERE table_schema = ?
+          AND table_type = 'BASE TABLE'
+        ORDER BY table_name
+        """,
+        [BRONZE_SCHEMA],
+    ).fetchall()
+    summary: dict[str, int] = {}
+    for (table_name,) in table_names:
+        qualified = f"{BRONZE_SCHEMA}.{table_name}"
+        count = con.execute(
+            f"SELECT COUNT(*) FROM {_qualified_table(BRONZE_SCHEMA, table_name)}"
+        ).fetchone()[0]
+        summary[qualified] = count
     return summary

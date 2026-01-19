@@ -73,7 +73,20 @@ def _(con, get_table_summary, pd):
 
 @app.cell
 def _(con, mo):
-    table_names = [row[0] for row in con.execute("SHOW TABLES").fetchall()]
+    BRONZE_SCHEMA = "bronze"
+    table_names = [
+        row[0]
+        for row in con.execute(
+            """
+            SELECT table_name
+            FROM information_schema.tables
+            WHERE table_schema = ?
+              AND table_type = 'BASE TABLE'
+            ORDER BY table_name
+            """,
+            [BRONZE_SCHEMA],
+        ).fetchall()
+    ]
     options = table_names if table_names else ["<no tables>"]
     table = mo.ui.dropdown(
         options=options,
@@ -89,12 +102,17 @@ def _(con, mo):
     )
 
     mo.hstack([table, limit], justify="space-between", align="center")
-    return limit, table
+    return BRONZE_SCHEMA, limit, table
 
 
 @app.cell
-def _(con, limit, mo, table):
-    sample_df = con.sql(f'SELECT * FROM "{table.value}" LIMIT {int(limit.value)}').df()
+def _(BRONZE_SCHEMA, con, limit, mo, table):
+    if table.value == "<no tables>":
+        sample_df = con.sql("SELECT 1 as no_tables").df()
+    else:
+        sample_df = con.sql(
+            f'SELECT * FROM {BRONZE_SCHEMA}."{table.value}" LIMIT {int(limit.value)}'
+        ).df()
     mo.ui.table(sample_df, selection=None)
     return
 

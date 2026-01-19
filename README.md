@@ -28,7 +28,8 @@ uv run main.py /path/to/bundles
 ## Read the data (DuckDB)
 
 This project materializes each FHIR `resourceType` into a DuckDB table (one table
-per resource type, e.g. `patient`, `observation`, `condition`).
+per resource type) under the `bronze` schema (e.g. `bronze.patient`,
+`bronze.observation`, `bronze.condition`).
 
 Create/update the DuckDB database (defaults to `fhir.duckdb`):
 
@@ -88,6 +89,7 @@ uvx ty check .
 - Loads each `*.json` file as a Bundle.
 - Extracts each `entry.resource` and groups rows by `resourceType`.
 - Creates one DuckDB table per `resourceType` (lowercased).
+- Tables live in the `bronze` schema (medallion architecture: bronze layer).
 - Adds provenance columns: `_source_file`, `_source_bundle`, `_full_url`.
 
 The summary reports how many resource tables were created and the row counts.
