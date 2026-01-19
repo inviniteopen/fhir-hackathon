@@ -10,7 +10,6 @@ from fhir.resources import get_fhir_model_class
 from fhir.resources.bundle import Bundle
 from pydantic import ValidationError
 
-
 DEFAULT_INPUT_DIR = Path(__file__).resolve().parent / "data" / "EPS"
 
 
@@ -75,7 +74,7 @@ def parse_resource(
         return None
 
     try:
-        return model_cls.parse_obj(resource_json)
+        return model_cls.model_validate(resource_json)
     except ValidationError as exc:
         for err in exc.errors():
             loc = ".".join(str(part) for part in err.get("loc", []))
@@ -94,7 +93,7 @@ def parse_resource(
 def parse_bundle_file(path: Path) -> ParsedBundle:
     data = load_json(path)
     bundle_meta = {key: value for key, value in data.items() if key != "entry"}
-    bundle = Bundle.parse_obj(bundle_meta)
+    bundle = Bundle.model_validate(bundle_meta)
 
     parsed = ParsedBundle(source=path, bundle=bundle)
     entries = data.get("entry", [])
