@@ -15,6 +15,7 @@ dependencies = [
     "pandera",
     "pyarrow>=22.0.0",
     "wrapt>=2.0.1",
+    "auto-mix-prep>=0.2.0",
 ]
 
 [dependency-groups]
@@ -28,6 +29,9 @@ test = [
 polars = [
     "polars",
 ]
+notebook = [
+    "marimo>=0.12.0",
+]
 
 [tool.pytest.ini_options]
 minversion = "8.0"
@@ -36,3 +40,6 @@ testpaths = ["tests"]
 
 [tool.uv]
 default-groups = ["test", "polars"]
+
+[tool.marimo.runtime]
+pythonpath = ["src"]

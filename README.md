@@ -1,7 +1,7 @@
 # FHIR Bundle Parser Demo
 
-This demo parses FHIR Bundle JSON files from `data/EPS` into typed
-`fhir.resources` models.
+This demo loads FHIR Bundle JSON files from `data/EPS` into DuckDB tables (one
+table per `resourceType`) for analysis.
 
 ## Requirements
 
@@ -25,11 +25,37 @@ To parse a different directory:
 uv run main.py /path/to/bundles
 ```
 
-To see validation errors for entries that fail to parse:
+## Read the data (DuckDB)
+
+This project materializes each FHIR `resourceType` into a DuckDB table (one table
+per resource type, e.g. `patient`, `observation`, `condition`).
+
+Create/update the DuckDB database (defaults to `fhir.duckdb`):
 
 ```bash
-uv run main.py --show-errors
+uv run main.py
 ```
+
+Use a different input directory or database path:
+
+```bash
+uv run main.py data/EPS --db /tmp/fhir.duckdb
+```
+
+## Explore with Marimo
+
+The exploration notebook lives at:
+
+`src/marimo/explore_fhir_duckdb.py`
+
+Run the notebook editor:
+
+```bash
+uv run --group notebook marimo edit src/marimo/explore_fhir_duckdb.py
+```
+
+The notebook defaults to opening `fhir.duckdb` at the repo root, but you can
+change the path from within the notebook UI.
 
 ## Tests
 
@@ -60,13 +86,11 @@ uvx ty check .
 ## What it does
 
 - Loads each `*.json` file as a Bundle.
-- Parses Bundle metadata into a typed `Bundle` model.
-- Parses each `entry.resource` into the appropriate typed FHIR model using
-  `fhir.resources.get_fhir_model_class`.
-- Collects validation errors instead of failing the entire run.
+- Extracts each `entry.resource` and groups rows by `resourceType`.
+- Creates one DuckDB table per `resourceType` (lowercased).
+- Adds provenance columns: `_source_file`, `_source_bundle`, `_full_url`.
 
-The summary reports how many entries were successfully typed vs. how many
-failed validation.
+The summary reports how many resource tables were created and the row counts.
 
 ## DAS (Data as Software)
 
