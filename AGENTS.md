@@ -23,3 +23,25 @@ Documentation: https://github.com/nazrulworld/fhir.resources
 - Python 3.11+
 - Type hints required
 - Use `Path` from `pathlib` for file operations
+
+## DAS (Data as Software)
+
+The `das/` module provides typed dataframe abstractions. Use it when working with parsed FHIR data in dataframes.
+
+### When to use DAS
+
+- Loading FHIR resources into dataframes for analysis
+- Performing aggregations, filtering, or transformations on FHIR data
+- When type safety for dataframe operations is needed
+
+### Available engines
+
+- **DuckDB** (`das.engine.duckdb`) - Preferred for analytical queries
+- **Polars** (`das.engine.polars`) - Alternative high-performance option
+
+### Guidelines
+
+- Prefer DuckDB for most use cases (fast, lightweight, SQL-compatible)
+- Use typed relations/dataframes from `das.engine` for type safety
+- Do not modify the `das/` source code - it's shared infrastructure
+- PySpark engine exists but is disabled for this project (simplicity)
