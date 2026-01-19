@@ -11,6 +11,8 @@ import duckdb
 import pyarrow as pa
 import pytest
 
+from src.fhir_loader import get_table_summary, load_bundles_to_tables
+
 DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data" / "EPS"
 
 
@@ -21,16 +23,6 @@ def _create_table_from_resources(
     arrow_table = pa.Table.from_pylist(resources)
     con.register(f"_temp_{table_name}", arrow_table)
     con.execute(f"CREATE TABLE {table_name} AS SELECT * FROM _temp_{table_name}")
-    con.unregister(f"_temp_{table_name}")
-
-
-def _insert_into_table(
-    con: duckdb.DuckDBPyConnection, table_name: str, resources: list[dict[str, Any]]
-) -> None:
-    """Insert resources into an existing table."""
-    arrow_table = pa.Table.from_pylist(resources)
-    con.register(f"_temp_{table_name}", arrow_table)
-    con.execute(f"INSERT INTO {table_name} SELECT * FROM _temp_{table_name}")
     con.unregister(f"_temp_{table_name}")
 
 
@@ -109,8 +101,8 @@ class TestFhirToTables:
         assert len(observations) == 1
         assert observations.iloc[0]["status"] == "final"
 
-    def test_load_multiple_bundles_append_to_tables(self):
-        """Load multiple bundles, appending resources to existing tables."""
+    def test_load_multiple_bundles_to_tables(self):
+        """Load multiple bundles, collecting all resources first then creating tables."""
         bundles = [
             {
                 "resourceType": "Bundle",
@@ -130,32 +122,28 @@ class TestFhirToTables:
             },
         ]
 
-        con = duckdb.connect(":memory:")
+        # Collect all resources by type (same approach as src.fhir_loader)
+        all_resources_by_type: dict[str, list[dict[str, Any]]] = {}
 
         for bundle_json in bundles:
             bundle_id = bundle_json.get("id")
 
-            # Group by type
-            resources_by_type: dict[str, list[dict[str, Any]]] = {}
             for entry in bundle_json.get("entry", []):
                 resource = entry.get("resource", {})
                 resource_type = resource.get("resourceType")
                 if resource_type:
-                    if resource_type not in resources_by_type:
-                        resources_by_type[resource_type] = []
-                    resources_by_type[resource_type].append(
+                    if resource_type not in all_resources_by_type:
+                        all_resources_by_type[resource_type] = []
+                    all_resources_by_type[resource_type].append(
                         {"_source_bundle": bundle_id, **resource}
                     )
 
-            # Insert or append to tables
-            for resource_type, resources in resources_by_type.items():
-                table_name = resource_type.lower()
-                tables = con.execute("SHOW TABLES").fetchdf()
+        # Create tables once
+        con = duckdb.connect(":memory:")
 
-                if table_name in tables["name"].values:
-                    _insert_into_table(con, table_name, resources)
-                else:
-                    _create_table_from_resources(con, table_name, resources)
+        for resource_type, resources in all_resources_by_type.items():
+            table_name = resource_type.lower()
+            _create_table_from_resources(con, table_name, resources)
 
         # Verify all tables
         tables = con.execute("SHOW TABLES").fetchdf()
@@ -210,83 +198,23 @@ class TestFhirToTables:
 class TestRealEpsData:
     """Test with real European Patient Summary data."""
 
-    def test_load_eps_bundles_to_tables(self):
-        """Load all EPS bundles into per-resource-type tables.
+    def test_load_bundles_to_tables_function(self):
+        """Test the load_bundles_to_tables function from src.fhir_loader."""
+        con = load_bundles_to_tables(DATA_DIR)
 
-        Collects all resources first, then creates tables once to handle
-        schema variations across different FHIR resources of the same type.
-        """
-        json_files = sorted(DATA_DIR.glob("*.json"))
-        assert len(json_files) > 0, "Expected JSON files"
-
-        # Collect all resources by type across all bundles
-        all_resources_by_type: dict[str, list[dict[str, Any]]] = {}
-
-        for json_path in json_files:
-            bundle_json = json.loads(json_path.read_text())
-            bundle_id = bundle_json.get("id")
-
-            for entry in bundle_json.get("entry", []):
-                resource = entry.get("resource", {})
-                resource_type = resource.get("resourceType")
-                if resource_type:
-                    if resource_type not in all_resources_by_type:
-                        all_resources_by_type[resource_type] = []
-                    all_resources_by_type[resource_type].append(
-                        {
-                            "_source_file": json_path.name,
-                            "_source_bundle": bundle_id,
-                            "_full_url": entry.get("fullUrl"),
-                            **resource,
-                        }
-                    )
-
-        # Create tables once with all resources (PyArrow handles schema union)
-        con = duckdb.connect(":memory:")
-
-        for resource_type, resources in all_resources_by_type.items():
-            table_name = resource_type.lower()
-            _create_table_from_resources(con, table_name, resources)
-
-        # Report tables created
-        tables = con.execute("SHOW TABLES").fetchdf()
-        print(f"\nTables created: {sorted(tables['name'].tolist())}")
-
-        # Count per table
-        for table_name in sorted(tables["name"]):
-            count = con.execute(f"SELECT COUNT(*) FROM {table_name}").fetchone()[0]
-            print(f"  {table_name}: {count} rows")
+        # Verify tables created
+        summary = get_table_summary(con)
+        print(f"\nTables created: {list(summary.keys())}")
+        print(f"Total resources: {sum(summary.values())}")
 
         # Verify key tables exist
-        assert "patient" in tables["name"].values
-        assert "observation" in tables["name"].values
+        assert "patient" in summary
+        assert "observation" in summary
+        assert summary["patient"] == 50  # 50 bundles = 50 patients
 
     def test_query_across_resource_tables(self):
         """Demonstrate querying across resource type tables."""
-        json_files = sorted(DATA_DIR.glob("*.json"))[:5]  # Sample for speed
-
-        # Collect all resources by type
-        all_resources_by_type: dict[str, list[dict[str, Any]]] = {}
-
-        for json_path in json_files:
-            bundle_json = json.loads(json_path.read_text())
-
-            for entry in bundle_json.get("entry", []):
-                resource = entry.get("resource", {})
-                resource_type = resource.get("resourceType")
-                if resource_type:
-                    if resource_type not in all_resources_by_type:
-                        all_resources_by_type[resource_type] = []
-                    all_resources_by_type[resource_type].append(
-                        {"_source_file": json_path.name, **resource}
-                    )
-
-        # Create tables
-        con = duckdb.connect(":memory:")
-
-        for resource_type, resources in all_resources_by_type.items():
-            table_name = resource_type.lower()
-            _create_table_from_resources(con, table_name, resources)
+        con = load_bundles_to_tables(DATA_DIR)
 
         # Example queries
 
@@ -296,12 +224,12 @@ class TestRealEpsData:
             FROM observation
             GROUP BY _source_file
             ORDER BY obs_count DESC
+            LIMIT 5
         """).fetchdf()
-        print(f"\nObservations per bundle:\n{obs_per_bundle.to_string()}")
+        print(f"\nObservations per bundle (top 5):\n{obs_per_bundle.to_string()}")
 
         # 2. Resource type distribution
-        tables = con.execute("SHOW TABLES").fetchdf()
+        summary = get_table_summary(con)
         print("\nResource distribution:")
-        for table_name in sorted(tables["name"]):
-            count = con.execute(f"SELECT COUNT(*) FROM {table_name}").fetchone()[0]
+        for table_name, count in summary.items():
             print(f"  {table_name}: {count}")
