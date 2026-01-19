@@ -80,40 +80,22 @@ def _(con, mo):
         value=options[0],
         label="Table to sample",
     )
-    table
-    return (table,)
-
-
-@app.cell
-def _(con, pd, table):
-    sample_df = (
-        pd.DataFrame()
-        if table.value.startswith("<")
-        else con.sql(f"SELECT * FROM {table.value} LIMIT 25").df()
+    limit = mo.ui.slider(
+        start=1,
+        stop=200,
+        value=25,
+        step=1,
+        label="Rows",
     )
-    sample_df
-    return
+
+    mo.hstack([table, limit], justify="space-between", align="center")
+    return limit, table
 
 
 @app.cell
-def _(mo):
-    sql = mo.ui.text_area(
-        value="SELECT * FROM patient LIMIT 10",
-        label="Ad-hoc SQL",
-        full_width=True,
-    )
-    sql
-    return (sql,)
-
-
-@app.cell
-def _(con, pd, sql):
-    try:
-        df = con.sql(sql.value).df()
-    except Exception as exc:  # noqa: BLE001 - notebook UX: show errors inline
-        df = pd.DataFrame({"error": [str(exc)]})
-
-    df
+def _(con, limit, mo, table):
+    sample_df = con.sql(f'SELECT * FROM "{table.value}" LIMIT {int(limit.value)}').df()
+    mo.ui.table(sample_df, selection=None)
     return
 
 
