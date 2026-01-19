@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any
 
 import duckdb
-import pyarrow as pa
+import polars as pl
 
 from src.constants import BRONZE_SCHEMA
 
@@ -128,10 +128,11 @@ def load_bundle_file(
 def _create_table(
     con: duckdb.DuckDBPyConnection, table_name: str, resources: list[dict[str, Any]]
 ) -> None:
-    """Create a table from a list of resource dicts using PyArrow."""
-    arrow_table = pa.Table.from_pylist(resources)
+    """Create a table from a list of resource dicts using Polars."""
+    # Use Polars for better schema inference with heterogeneous dicts
+    df = pl.DataFrame(resources)
     temp_name = f"_temp_{table_name}"
-    con.register(temp_name, arrow_table)
+    con.register(temp_name, df.to_arrow())
     _ensure_bronze_schema(con)
     bronze_table = _qualified_table(BRONZE_SCHEMA, table_name)
     con.execute(f"CREATE OR REPLACE TABLE {bronze_table} AS SELECT * FROM {temp_name}")

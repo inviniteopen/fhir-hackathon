@@ -9,16 +9,28 @@ import duckdb
 
 from src.constants import BRONZE_SCHEMA, SILVER_SCHEMA
 from src.fhir_loader import get_table_summary, load_bundles_to_tables
-from src.transformations.patients import (
-    get_patient_summary,
-    transform_patient,
+from src.transformations.conditions import (
+    get_condition_summary,
+    transform_condition,
 )
 from src.transformations.observations import (
     get_observation_summary,
     transform_observations,
 )
+from src.transformations.patients import (
+    get_patient_summary,
+    transform_patient,
+)
+from src.validations.conditions import (
+    get_validation_report as get_condition_validation_report,
+)
+from src.validations.conditions import (
+    validate_condition,
+)
 from src.validations.observations import (
     get_validation_report as get_observation_validation_report,
+)
+from src.validations.observations import (
     validate_observation,
 )
 from src.validations.patients import get_validation_report, validate_patient
@@ -72,7 +84,12 @@ def main() -> None:
     silver_patient_lf = transform_patient(bronze_patient_df)
     validated_patient_lf = validate_patient(silver_patient_lf)
 
-    # Observation transformation (silver.* tables)
+    # Condition transformation
+    bronze_condition_df = con.execute(f"SELECT * FROM {BRONZE_SCHEMA}.condition").pl()
+    silver_condition_lf = transform_condition(bronze_condition_df)
+    validated_condition_lf = validate_condition(silver_condition_lf)
+
+    # Observation transformation
     bronze_observation_df = con.execute(
         f"SELECT * FROM {BRONZE_SCHEMA}.observation"
     ).pl()
@@ -89,16 +106,27 @@ def main() -> None:
     )
     con.unregister("silver_patient_temp")
 
+    validated_condition_df = validated_condition_lf.collect()
+    con.register("silver_condition_temp", validated_condition_df.to_arrow())
+    con.execute(
+        f"CREATE OR REPLACE TABLE {SILVER_SCHEMA}.condition AS SELECT * FROM silver_condition_temp"
+    )
+    con.unregister("silver_condition_temp")
+
     validated_observation_df = validated_observation_lf.collect()
     con.register("silver_observation_temp", validated_observation_df.to_arrow())
     con.execute(
-        f"CREATE OR REPLACE TABLE {SILVER_SCHEMA}.observations AS SELECT * FROM silver_observation_temp"
+        f"CREATE OR REPLACE TABLE {SILVER_SCHEMA}.observation AS SELECT * FROM silver_observation_temp"
     )
     con.unregister("silver_observation_temp")
 
     # Print silver summary
     patient_summary = get_patient_summary(validated_patient_lf)
     validation_report = get_validation_report(validated_patient_lf)
+    condition_summary = get_condition_summary(validated_condition_lf)
+    condition_validation_report = get_condition_validation_report(
+        validated_condition_lf
+    )
     observation_summary = get_observation_summary(validated_observation_lf)
     observation_validation_report = get_observation_validation_report(
         validated_observation_lf
@@ -107,9 +135,8 @@ def main() -> None:
     print()
     print("Silver tables:")
     print(f"  {SILVER_SCHEMA}.patient: {patient_summary['total_patients']}")
-    print(
-        f"  {SILVER_SCHEMA}.observations: {observation_summary['total_observations']}"
-    )
+    print(f"  {SILVER_SCHEMA}.condition: {condition_summary['total_conditions']}")
+    print(f"  {SILVER_SCHEMA}.observation: {observation_summary['total_observations']}")
 
     print()
     print("Patient data quality:")
@@ -119,13 +146,30 @@ def main() -> None:
             print(f"  {field}: {count} ({pct:.0f}%)")
 
     print()
-    print("Validation results:")
+    print("Patient validation results:")
     print(f"  Valid: {validation_report['valid_records']}")
     print(f"  Invalid: {validation_report['invalid_records']}")
     print(f"  Validity rate: {validation_report['validity_rate']:.1%}")
     if validation_report["errors_by_rule"]:
         print("  Errors by rule:")
         for err in validation_report["errors_by_rule"]:
+            print(f"    {err['error']}: {err['count']}")
+
+    print()
+    print("Condition data quality:")
+    for field, count in condition_summary.items():
+        if field != "total_conditions":
+            pct = count / condition_summary["total_conditions"] * 100
+            print(f"  {field}: {count} ({pct:.0f}%)")
+
+    print()
+    print("Condition validation results:")
+    print(f"  Valid: {condition_validation_report['valid_records']}")
+    print(f"  Invalid: {condition_validation_report['invalid_records']}")
+    print(f"  Validity rate: {condition_validation_report['validity_rate']:.1%}")
+    if condition_validation_report["errors_by_rule"]:
+        print("  Errors by rule:")
+        for err in condition_validation_report["errors_by_rule"]:
             print(f"    {err['error']}: {err['count']}")
 
     print()
@@ -139,9 +183,7 @@ def main() -> None:
     print("Observation validation results:")
     print(f"  Valid: {observation_validation_report['valid_records']}")
     print(f"  Invalid: {observation_validation_report['invalid_records']}")
-    print(
-        f"  Validity rate: {observation_validation_report['validity_rate']:.1%}"
-    )
+    print(f"  Validity rate: {observation_validation_report['validity_rate']:.1%}")
     if observation_validation_report["errors_by_rule"]:
         print("  Errors by rule:")
         for err in observation_validation_report["errors_by_rule"]:
