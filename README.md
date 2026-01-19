@@ -31,6 +31,12 @@ To see validation errors for entries that fail to parse:
 uv run main.py --show-errors
 ```
 
+## Tests
+
+```bash
+uv run pytest tests/
+```
+
 ## Code quality
 
 Format:
@@ -61,3 +67,26 @@ uvx ty check .
 
 The summary reports how many entries were successfully typed vs. how many
 failed validation.
+
+## DAS (Data as Software)
+
+The `das/` module provides typed dataframe abstractions for working with parsed FHIR data. It enables type-safe dataframe operations across multiple engines.
+
+### Supported engines
+
+- **DuckDB** - Fast analytical queries on local data
+- **Polars** - High-performance dataframe library
+
+### Purpose
+
+DAS allows you to:
+
+- Load parsed FHIR resources into typed dataframes
+- Perform type-safe transformations and analysis
+- Use consistent APIs across different dataframe engines
+
+### Running DAS tests
+
+```bash
+uv run pytest tests/duckdb/ tests/polars/
+```
