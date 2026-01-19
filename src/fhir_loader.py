@@ -7,7 +7,7 @@ from typing import Any
 import duckdb
 import pyarrow as pa
 
-from .constants import BRONZE_SCHEMA
+from src.constants import BRONZE_SCHEMA
 
 
 def _quote_ident(ident: str) -> str:

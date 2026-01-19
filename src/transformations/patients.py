@@ -6,8 +6,7 @@ from typing import Optional
 import polars as pl
 
 from das.engine.polars.typed_dataframe import Col, TypedLazyFrame
-
-from ..constants import SILVER_SCHEMA
+from src.constants import SILVER_SCHEMA
 
 
 class SilverPatient(TypedLazyFrame):
