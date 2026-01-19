@@ -87,7 +87,7 @@ def _(con, mo):
             [BRONZE_SCHEMA],
         ).fetchall()
     ]
-    options = table_names if table_names else ["<no tables>"]
+    options = table_names 
     table = mo.ui.dropdown(
         options=options,
         value=options[0],
@@ -107,10 +107,7 @@ def _(con, mo):
 
 @app.cell
 def _(BRONZE_SCHEMA, con, limit, mo, table):
-    if table.value == "<no tables>":
-        sample_df = con.sql("SELECT 1 as no_tables").df()
-    else:
-        sample_df = con.sql(
+    sample_df = con.sql(
             f'SELECT * FROM {BRONZE_SCHEMA}."{table.value}" LIMIT {int(limit.value)}'
         ).df()
     mo.ui.table(sample_df, selection=None)
