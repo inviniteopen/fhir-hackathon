@@ -7,7 +7,7 @@ from typing import Callable
 
 import polars as pl
 
-from src.transformations.observations import SilverObservation
+from src.common.models import Observation
 
 
 @dataclass
@@ -15,7 +15,7 @@ class ValidationRule:
     """A validation rule with name and check expression."""
 
     name: str
-    check: Callable[[SilverObservation], pl.Expr]
+    check: Callable[[Observation], pl.Expr]
     description: str
 
 
@@ -40,49 +40,49 @@ def _looks_like_date_or_datetime(col: pl.Expr) -> pl.Expr:
     return col.str.contains(r"^\d{4}-\d{2}-\d{2}")
 
 
-def _has_any_value(lf: SilverObservation) -> pl.Expr:
+def _has_any_value(lf: Observation) -> pl.Expr:
     return (
-        SilverObservation.value_quantity_value.is_not_null()
-        | SilverObservation.value_codeable_concept_code.is_not_null()
-        | SilverObservation.value_string.is_not_null()
-        | SilverObservation.value_boolean.is_not_null()
-        | SilverObservation.value_integer.is_not_null()
-        | SilverObservation.value_datetime.is_not_null()
-        | (SilverObservation.component_count > 0)
+        Observation.value_quantity_value.is_not_null()
+        | Observation.value_codeable_concept_code.is_not_null()
+        | Observation.value_string.is_not_null()
+        | Observation.value_boolean.is_not_null()
+        | Observation.value_integer.is_not_null()
+        | Observation.value_datetime.is_not_null()
+        | (Observation.component_count > 0)
     )
 
 
 OBSERVATION_VALIDATION_RULES: list[ValidationRule] = [
     ValidationRule(
         name="id_required",
-        check=lambda _: _is_not_null(SilverObservation.id),
+        check=lambda _: _is_not_null(Observation.id),
         description="Observation id must not be null",
     ),
     ValidationRule(
         name="status_required",
-        check=lambda _: _is_not_null(SilverObservation.status),
+        check=lambda _: _is_not_null(Observation.status),
         description="Observation status must not be null",
     ),
     ValidationRule(
         name="status_valid",
-        check=lambda _: SilverObservation.status.is_in(VALID_OBSERVATION_STATUSES),
+        check=lambda _: Observation.status.is_in(VALID_OBSERVATION_STATUSES),
         description=f"Observation status must be one of: {', '.join(VALID_OBSERVATION_STATUSES)}",
     ),
     ValidationRule(
         name="code_present",
-        check=lambda _: SilverObservation.code_code.is_not_null()
-        | SilverObservation.code_text.is_not_null(),
+        check=lambda _: Observation.code_code.is_not_null()
+        | Observation.code_text.is_not_null(),
         description="Observation must have a code (code_code or code_text)",
     ),
     ValidationRule(
         name="subject_present",
-        check=lambda _: SilverObservation.subject_reference.is_not_null(),
+        check=lambda _: Observation.subject_reference.is_not_null(),
         description="Observation must have a subject reference",
     ),
     ValidationRule(
         name="effective_format",
-        check=lambda _: SilverObservation.effective_datetime.is_null()
-        | _looks_like_date_or_datetime(SilverObservation.effective_datetime),
+        check=lambda _: Observation.effective_datetime.is_null()
+        | _looks_like_date_or_datetime(Observation.effective_datetime),
         description="effective_datetime should start with YYYY-MM-DD when present",
     ),
     ValidationRule(
@@ -92,20 +92,20 @@ OBSERVATION_VALIDATION_RULES: list[ValidationRule] = [
     ),
     ValidationRule(
         name="quantity_unit_if_value",
-        check=lambda _: SilverObservation.value_quantity_value.is_null()
-        | SilverObservation.value_quantity_unit.is_not_null(),
+        check=lambda _: Observation.value_quantity_value.is_null()
+        | Observation.value_quantity_unit.is_not_null(),
         description="If value_quantity_value is present, value_quantity_unit must be present",
     ),
     ValidationRule(
         name="quantity_value_finite",
-        check=lambda _: SilverObservation.value_quantity_value.is_null()
-        | SilverObservation.value_quantity_value.is_finite(),
+        check=lambda _: Observation.value_quantity_value.is_null()
+        | Observation.value_quantity_value.is_finite(),
         description="If value_quantity_value is present, it must be finite",
     ),
 ]
 
 
-def validate_observation(silver_lf: SilverObservation) -> SilverObservation:
+def validate_observation(silver_lf: Observation) -> Observation:
     """Validate silver.observation and populate validation_errors column."""
     error_exprs: list[pl.Expr] = []
     for rule in OBSERVATION_VALIDATION_RULES:
@@ -119,15 +119,13 @@ def validate_observation(silver_lf: SilverObservation) -> SilverObservation:
         .list.eval(pl.element().drop_nulls())
         .alias("validation_errors")
     )
-    return SilverObservation.from_df(validated_lf, validate=False)
+    return Observation.from_df(validated_lf, validate=False)
 
 
-def get_validation_summary(validated_lf: SilverObservation) -> pl.DataFrame:
+def get_validation_summary(validated_lf: Observation) -> pl.DataFrame:
     """Get summary of validation errors."""
     return (
-        validated_lf.select(
-            SilverObservation.validation_errors.list.explode().alias("error")
-        )
+        validated_lf.select(Observation.validation_errors.list.explode().alias("error"))
         .filter(pl.col("error").is_not_null())
         .group_by("error")
         .agg(pl.len().alias("count"))
@@ -136,23 +134,23 @@ def get_validation_summary(validated_lf: SilverObservation) -> pl.DataFrame:
     )
 
 
-def get_valid_observations(validated_lf: SilverObservation) -> SilverObservation:
+def get_valid_observations(validated_lf: Observation) -> Observation:
     """Filter to only valid observations (no validation errors)."""
-    return SilverObservation.from_df(
-        validated_lf.filter(SilverObservation.validation_errors.list.len() == 0),
+    return Observation.from_df(
+        validated_lf.filter(Observation.validation_errors.list.len() == 0),
         validate=False,
     )
 
 
-def get_invalid_observations(validated_lf: SilverObservation) -> SilverObservation:
+def get_invalid_observations(validated_lf: Observation) -> Observation:
     """Filter to only invalid observations (has validation errors)."""
-    return SilverObservation.from_df(
-        validated_lf.filter(SilverObservation.validation_errors.list.len() > 0),
+    return Observation.from_df(
+        validated_lf.filter(Observation.validation_errors.list.len() > 0),
         validate=False,
     )
 
 
-def get_validation_report(validated_lf: SilverObservation) -> dict:
+def get_validation_report(validated_lf: Observation) -> dict:
     """Generate a validation report."""
     df = validated_lf.collect()
     total = len(df)

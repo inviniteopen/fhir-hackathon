@@ -11,7 +11,7 @@ import duckdb
 import pyarrow as pa
 import pytest
 
-from src.fhir_loader import get_table_summary, load_bundles_to_tables
+from src.bronze import get_table_summary, load_bundles_to_tables
 
 DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data" / "EPS"
 BRONZE_SCHEMA = "bronze"

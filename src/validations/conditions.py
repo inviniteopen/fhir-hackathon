@@ -5,7 +5,7 @@ from typing import Callable
 
 import polars as pl
 
-from ..transformations.conditions import SilverCondition
+from src.common.models import Condition
 
 
 @dataclass
@@ -41,40 +41,40 @@ def _is_not_null(col: pl.Expr) -> pl.Expr:
 CONDITION_VALIDATION_RULES: list[ValidationRule] = [
     ValidationRule(
         name="id_required",
-        check=lambda _: _is_not_null(SilverCondition.id),
+        check=lambda _: _is_not_null(Condition.id),
         description="Condition ID must not be null",
     ),
     ValidationRule(
         name="code_required",
-        check=lambda _: _is_not_null(SilverCondition.code),
+        check=lambda _: _is_not_null(Condition.code),
         description="Condition must have a diagnosis code",
     ),
     ValidationRule(
         name="code_display_required",
-        check=lambda _: _is_not_null(SilverCondition.code_display),
+        check=lambda _: _is_not_null(Condition.code_display),
         description="Condition must have a diagnosis display name",
     ),
     ValidationRule(
         name="patient_id_required",
-        check=lambda _: _is_not_null(SilverCondition.patient_id),
+        check=lambda _: _is_not_null(Condition.patient_id),
         description="Condition must be linked to a patient",
     ),
     ValidationRule(
         name="onset_date_format",
-        check=lambda _: SilverCondition.onset_date.is_null()
-        | _is_valid_date_format(SilverCondition.onset_date),
+        check=lambda _: Condition.onset_date.is_null()
+        | _is_valid_date_format(Condition.onset_date),
         description="Onset date must be in YYYY-MM-DD format",
     ),
     ValidationRule(
         name="abatement_date_format",
-        check=lambda _: SilverCondition.abatement_date.is_null()
-        | _is_valid_date_format(SilverCondition.abatement_date),
+        check=lambda _: Condition.abatement_date.is_null()
+        | _is_valid_date_format(Condition.abatement_date),
         description="Abatement date must be in YYYY-MM-DD format",
     ),
     ValidationRule(
         name="valid_code_system",
-        check=lambda _: SilverCondition.code_system.is_null()
-        | (SilverCondition.code_system == SNOMED_SYSTEM),
+        check=lambda _: Condition.code_system.is_null()
+        | (Condition.code_system == SNOMED_SYSTEM),
         description="Code system should be SNOMED CT",
     ),
 ]

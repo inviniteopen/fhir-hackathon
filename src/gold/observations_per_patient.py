@@ -1,4 +1,4 @@
-"""Gold-layer aggregations built from silver tables."""
+"""Gold layer aggregation: observations per patient."""
 
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ def _qualified_table(schema: str, table: str) -> str:
     return f"{_quote_ident(schema)}.{_quote_ident(table)}"
 
 
-def create_gold_schema(con: duckdb.DuckDBPyConnection) -> None:
+def _create_gold_schema(con: duckdb.DuckDBPyConnection) -> None:
     con.execute(f"CREATE SCHEMA IF NOT EXISTS {_quote_ident(GOLD_SCHEMA)}")
 
 
@@ -31,7 +31,7 @@ def create_observations_per_patient(
     and computes patient age (in years) from `silver.patient.birth_date` as of `as_of`
     (defaults to DuckDB's CURRENT_DATE).
     """
-    create_gold_schema(con)
+    _create_gold_schema(con)
 
     as_of_sql = "CURRENT_DATE" if as_of is None else f"DATE '{as_of.isoformat()}'"
     gold_table = _qualified_table(GOLD_SCHEMA, "observations_per_patient")
