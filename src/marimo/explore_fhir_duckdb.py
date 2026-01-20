@@ -221,8 +221,8 @@ def _(GOLD_SCHEMA, con, mo):
     )
     fig.update_layout(
         title="Observations per patient",
-        xaxis_title="Observation count",
-        yaxis_title="Patients",
+        xaxis_title="Patient",
+        yaxis_title="Observation count",
         bargap=0.05,
         height=360,
     )
