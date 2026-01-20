@@ -129,7 +129,14 @@ def test_multiple_inheritance():
     point4d = Point4D.from_df(df)
     result = point4d.collect().to_dicts()
     assert len(result) == 3
-    assert result[0] == {"x": 0, "y": 0, "z": 0, "t": 0, "color": "black", "fillcolor": "white"}
+    assert result[0] == {
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "t": 0,
+        "color": "black",
+        "fillcolor": "white",
+    }
 
 
 def test_from_dicts():

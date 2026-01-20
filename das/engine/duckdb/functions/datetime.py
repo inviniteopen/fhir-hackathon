@@ -11,11 +11,15 @@ def convert_int_expr_to_date(col: Expression) -> Expression:
     return (Case(is_valid, parsed.cast(DATE))).alias(col.get_name())
 
 
-def convert_ints_to_dates(rel: DuckDBPyRelation, columns: list[str]) -> DuckDBPyRelation:
+def convert_ints_to_dates(
+    rel: DuckDBPyRelation, columns: list[str]
+) -> DuckDBPyRelation:
     return with_columns(rel, *[convert_int_expr_to_date(Col(col)) for col in columns])
 
 
-def timestamp_to_date(col: Expression, timestamp_format: str | None = None) -> Expression:
+def timestamp_to_date(
+    col: Expression, timestamp_format: str | None = None
+) -> Expression:
     """Converts timestamp expression to date with optional format and timezone normalization."""
     if timestamp_format:
         parsed = F("strptime", col, Lit(timestamp_format))

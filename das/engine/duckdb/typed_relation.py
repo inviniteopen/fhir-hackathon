@@ -52,6 +52,8 @@ class TypedRelation(TypedDataFrameBase, abstract=True):
                 amount_clean=FunctionExpression("trim", ColumnExpression("amount")),
             )
         """
-        existing = [duckdb.ColumnExpression(c) for c in self.columns if c not in named_exprs]
+        existing = [
+            duckdb.ColumnExpression(c) for c in self.columns if c not in named_exprs
+        ]
         new = [expr.alias(name) for name, expr in named_exprs.items()]
         return self.select(*existing, *new)

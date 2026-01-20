@@ -47,14 +47,18 @@ def get_log_level_from_env(default: LOG_LEVEL = LOG_LEVEL.INFO) -> LOG_LEVEL:
         try:
             return LOG_LEVEL(int(raw))
         except ValueError:
-            print(f"[WARN] Unknown numeric log level: {raw}. Falling back to default: {default.name}")
+            print(
+                f"[WARN] Unknown numeric log level: {raw}. Falling back to default: {default.name}"
+            )
             return default
 
     # Try named log level.
     try:
         return LOG_LEVEL[raw.upper()]
     except KeyError:
-        print(f"[WARN] Unknown log level: {raw}. Falling back to default: {default.name}")
+        print(
+            f"[WARN] Unknown log level: {raw}. Falling back to default: {default.name}"
+        )
         return default
 
 
@@ -71,7 +75,9 @@ def _setup_logger(level: LOG_LEVEL | int | None = None) -> logging.Logger:
     logger = logging.getLogger(LOGGER_NAME)
     if not logger.hasHandlers():
         handler = logging.StreamHandler()
-        handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
+        handler.setFormatter(
+            logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
+        )
         logger.addHandler(handler)
         logger.propagate = False
     # always reset level to whatever the caller passed

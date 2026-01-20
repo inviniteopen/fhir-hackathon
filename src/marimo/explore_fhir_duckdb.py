@@ -26,6 +26,7 @@ def _():
     from src.constants import BRONZE_SCHEMA, GOLD_SCHEMA, SILVER_SCHEMA
     from src.silver.s1 import get_patient_summary
     from src.validations.patients import get_validation_report
+
     return (
         BRONZE_SCHEMA,
         GOLD_SCHEMA,
@@ -68,9 +69,7 @@ def _(db_path, duckdb):
 
 @app.cell
 def _(duckdb):
-    def get_table_names(
-        con: duckdb.DuckDBPyConnection, schema: str
-    ) -> list[str]:
+    def get_table_names(con: duckdb.DuckDBPyConnection, schema: str) -> list[str]:
         return [
             row[0]
             for row in con.sql(
@@ -85,6 +84,7 @@ def _(duckdb):
                 params=[schema],
             ).fetchall()
         ]
+
     return (get_table_names,)
 
 
@@ -100,9 +100,7 @@ def _(mo):
 def _(con, get_table_summary, pd):
     summary = get_table_summary(con)
     summary_df = (
-        pd.DataFrame(
-            [{"table": name, "rows": rows} for name, rows in summary.items()]
-        )
+        pd.DataFrame([{"table": name, "rows": rows} for name, rows in summary.items()])
         .sort_values(["rows", "table"], ascending=[False, True])
         .reset_index(drop=True)
     )
@@ -124,9 +122,7 @@ def _(BRONZE_SCHEMA, con, get_table_names, mo):
 
 @app.cell
 def _(BRONZE_SCHEMA, con, mo, table):
-    sample_df = con.sql(
-        f'SELECT * FROM {BRONZE_SCHEMA}."{table.value}" LIMIT 10'
-    ).df()
+    sample_df = con.sql(f'SELECT * FROM {BRONZE_SCHEMA}."{table.value}" LIMIT 10').df()
     mo.ui.table(sample_df, selection=None)
     return
 
@@ -211,13 +207,7 @@ def _(GOLD_SCHEMA, con, mo):
         """
     ).df()
 
-    fig = go.Figure(
-        data=[
-            go.Bar(
-                y=df["observation_count"]
-            )
-        ]
-    )
+    fig = go.Figure(data=[go.Bar(y=df["observation_count"])])
     fig.update_layout(
         title="Observations per patient",
         xaxis_title="Patient",
@@ -239,7 +229,9 @@ def _(df):
     last_80_percent_observations = sum(observation_counts[first_20_percent:])
 
     # Tests if most of the observations are caused by the 20 % most active patients
-    assert top_20_percet_observations > last_80_percent_observations, f"{top_20_percet_observations} > {last_80_percent_observations} not true"
+    assert top_20_percet_observations > last_80_percent_observations, (
+        f"{top_20_percet_observations} > {last_80_percent_observations} not true"
+    )
     return
 
 

@@ -13,7 +13,11 @@ def lowercase_columns(rel: DuckDBPyRelation) -> DuckDBPyRelation:
 
 def get_string_column_names(rel: DuckDBPyRelation) -> list[str]:
     """Get names of VARCHAR/string columns."""
-    return [name for name, dtype in zip(rel.columns, rel.types, strict=True) if str(dtype) == "VARCHAR"]
+    return [
+        name
+        for name, dtype in zip(rel.columns, rel.types, strict=True)
+        if str(dtype) == "VARCHAR"
+    ]
 
 
 def trim_string_columns(rel: DuckDBPyRelation) -> DuckDBPyRelation:
@@ -25,7 +29,9 @@ def trim_string_columns(rel: DuckDBPyRelation) -> DuckDBPyRelation:
 def nullify_string_columns(rel: DuckDBPyRelation) -> DuckDBPyRelation:
     """Replaces empty strings in all string columns with null values."""
     string_cols = get_string_column_names(rel)
-    return with_columns(rel, *[F("nullif", Col(c), Lit("")).alias(c) for c in string_cols])
+    return with_columns(
+        rel, *[F("nullif", Col(c), Lit("")).alias(c) for c in string_cols]
+    )
 
 
 def normalize_municipality_name(col: Expression) -> Expression:
