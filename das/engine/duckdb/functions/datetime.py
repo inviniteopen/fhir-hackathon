@@ -1,7 +1,7 @@
 from duckdb import DuckDBPyRelation, Expression
 from duckdb.typing import DATE, VARCHAR
 
-from .common import Case, Col, F, Lambda, Lit, none, true, with_columns
+from .common import Case, Col, F, Lambda, Lit, none, with_columns
 
 
 def convert_int_expr_to_date(col: Expression) -> Expression:

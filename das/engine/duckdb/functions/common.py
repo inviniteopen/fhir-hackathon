@@ -1,9 +1,6 @@
-from duckdb import CaseExpression as Case
 from duckdb import ColumnExpression as Col
 from duckdb import ConstantExpression as Lit
 from duckdb import DuckDBPyRelation, Expression
-from duckdb import FunctionExpression as F
-from duckdb import LambdaExpression as Lambda
 
 false = Lit("FALSE")
 none = Lit("NULL")

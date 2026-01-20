@@ -2,7 +2,6 @@ import contextlib
 import os
 import time
 
-import pytest
 
 
 def set_env() -> None:

@@ -1,4 +1,3 @@
-import pytest
 
 from das.engine.duckdb.typed_relation import Col, TypedRelation
 

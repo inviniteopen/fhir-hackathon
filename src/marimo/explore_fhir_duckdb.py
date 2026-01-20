@@ -20,12 +20,9 @@ def _():
 
     import duckdb
     import pandas as pd
-    import polars as pl
 
     from src.bronze.loader import get_table_summary
     from src.constants import BRONZE_SCHEMA, GOLD_SCHEMA, SILVER_SCHEMA
-    from src.silver.s1 import get_patient_summary
-    from src.validations.patients import get_validation_report
 
     return (
         BRONZE_SCHEMA,

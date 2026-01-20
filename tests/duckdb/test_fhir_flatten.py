@@ -3,7 +3,6 @@
 Integration layer: read JSON data into DuckDB dataframes, one table per resource type.
 """
 
-import json
 from pathlib import Path
 from typing import Any
 
