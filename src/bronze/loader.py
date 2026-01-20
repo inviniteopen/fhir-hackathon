@@ -22,6 +22,32 @@ def _ensure_bronze_schema(con: duckdb.DuckDBPyConnection) -> None:
     con.execute(f"CREATE SCHEMA IF NOT EXISTS {_quote_ident(BRONZE_SCHEMA)}")
 
 
+def _collect_resources_by_type(
+    bundle_paths: list[Path],
+) -> dict[str, list[dict[str, Any]]]:
+    """Collect resources by type across one or more bundle files."""
+    resources_by_type: dict[str, list[dict[str, Any]]] = {}
+
+    for json_path in bundle_paths:
+        bundle_json = json.loads(json_path.read_text())
+        bundle_id = bundle_json.get("id")
+
+        for entry in bundle_json.get("entry", []):
+            resource = entry.get("resource", {})
+            resource_type = resource.get("resourceType")
+            if resource_type:
+                resources_by_type.setdefault(resource_type, []).append(
+                    {
+                        "_source_file": json_path.name,
+                        "_source_bundle": bundle_id,
+                        "_full_url": entry.get("fullUrl"),
+                        **resource,
+                    }
+                )
+
+    return resources_by_type
+
+
 def load_bundles_to_tables(
     bundle_dir: Path,
     con: duckdb.DuckDBPyConnection | None = None,
@@ -50,27 +76,7 @@ def load_bundles_to_tables(
     if not json_files:
         return con
 
-    # Collect all resources by type across all bundles
-    resources_by_type: dict[str, list[dict[str, Any]]] = {}
-
-    for json_path in json_files:
-        bundle_json = json.loads(json_path.read_text())
-        bundle_id = bundle_json.get("id")
-
-        for entry in bundle_json.get("entry", []):
-            resource = entry.get("resource", {})
-            resource_type = resource.get("resourceType")
-            if resource_type:
-                if resource_type not in resources_by_type:
-                    resources_by_type[resource_type] = []
-                resources_by_type[resource_type].append(
-                    {
-                        "_source_file": json_path.name,
-                        "_source_bundle": bundle_id,
-                        "_full_url": entry.get("fullUrl"),
-                        **resource,
-                    }
-                )
+    resources_by_type = _collect_resources_by_type(json_files)
 
     # Create tables (PyArrow handles schema union for varying fields)
     for resource_type, resources in resources_by_type.items():
@@ -98,25 +104,7 @@ def load_bundle_file(
         con = duckdb.connect(":memory:")
     _ensure_bronze_schema(con)
 
-    bundle_json = json.loads(bundle_path.read_text())
-    bundle_id = bundle_json.get("id")
-
-    resources_by_type: dict[str, list[dict[str, Any]]] = {}
-
-    for entry in bundle_json.get("entry", []):
-        resource = entry.get("resource", {})
-        resource_type = resource.get("resourceType")
-        if resource_type:
-            if resource_type not in resources_by_type:
-                resources_by_type[resource_type] = []
-            resources_by_type[resource_type].append(
-                {
-                    "_source_file": bundle_path.name,
-                    "_source_bundle": bundle_id,
-                    "_full_url": entry.get("fullUrl"),
-                    **resource,
-                }
-            )
+    resources_by_type = _collect_resources_by_type([bundle_path])
 
     for resource_type, resources in resources_by_type.items():
         table_name = resource_type.lower()
