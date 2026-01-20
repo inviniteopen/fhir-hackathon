@@ -28,7 +28,6 @@ def _():
     from fhir_loader import get_table_summary
     from transformations.patients import get_patient_summary
     from validations.patients import get_validation_report
-
     return (
         BRONZE_SCHEMA,
         SILVER_SCHEMA,
@@ -88,17 +87,13 @@ def _(mo):
 @app.cell
 def _(con, get_table_summary, pd):
     summary = get_table_summary(con)
-    if summary:
-        summary_df = (
-            pd.DataFrame(
-                [{"table": name, "rows": rows} for name, rows in summary.items()]
-            )
-            .sort_values(["rows", "table"], ascending=[False, True])
-            .reset_index(drop=True)
+    summary_df = (
+        pd.DataFrame(
+            [{"table": name, "rows": rows} for name, rows in summary.items()]
         )
-    else:
-        summary_df = pd.DataFrame(columns=["table", "rows"])
-
+        .sort_values(["rows", "table"], ascending=[False, True])
+        .reset_index(drop=True)
+    )
     summary_df
     return
 
@@ -181,7 +176,7 @@ def _(SILVER_SCHEMA, con, mo, pd):
         mo.ui.table(silver_summary_df, selection=None)
     else:
         mo.md("_No silver tables found. Run `main.py` to create silver layer._")
-    return (silver_tables,)
+    return
 
 
 @app.cell
