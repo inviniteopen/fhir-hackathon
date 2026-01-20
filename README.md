@@ -11,6 +11,7 @@
     - Silver layer contains a cleaned up version from the bronzer layer data where nested fields are flattened and validations are perfmormed for values
     - Gold layer contains polished "data products". In our application, these tables contain aggregated distributions from data, that can be visualized and tested to ensure that synthetic data follow forms realistic distributions
 - A marimo notebook ties everything together. It allows users to explore data in bronze, silver and gold layers through table UI and visualisations.
+    - Static export of the notebook is available as [Github Page](https://inviniteopen.github.io/invinite.github.io/). Clone the repository for running interactive notebooks
 
 ## Why this matters?
 
