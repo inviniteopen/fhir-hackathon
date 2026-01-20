@@ -192,5 +192,120 @@ def _(GOLD_SCHEMA, con, gold_table, mo):
     return
 
 
+@app.cell
+def _(mo):
+    mo.md("""
+    ### Gold Visualizations
+
+    Uses `gold.observations_per_patient`.
+    """)
+    return
+
+
+@app.cell
+def _(mo):
+    obs_bin_width = mo.ui.slider(
+        start=1,
+        stop=50,
+        value=5,
+        step=1,
+        label="Observation count bin width",
+    )
+    obs_bin_width
+    return (obs_bin_width,)
+
+
+@app.cell
+def _(GOLD_SCHEMA, con, mo, obs_bin_width):
+    import plotly.graph_objects as go
+
+    df = con.sql(
+        f"""
+        SELECT observation_count
+        FROM {GOLD_SCHEMA}.observations_per_patient
+        """
+    ).df()
+
+    bin_w = int(obs_bin_width.value)
+    fig = go.Figure(
+        data=[
+            go.Histogram(
+                x=df["observation_count"],
+                xbins={"size": bin_w},
+                marker={"color": "#4C78A8"},
+            )
+        ]
+    )
+    fig.update_layout(
+        title="Observations per patient",
+        xaxis_title="Observation count",
+        yaxis_title="Patients",
+        bargap=0.05,
+        height=360,
+    )
+
+    mo.ui.plotly(fig)
+    return (go,)
+
+
+@app.cell
+def _(GOLD_SCHEMA, con, go, mo):
+    def _():
+        age_df = con.sql(
+            f"""
+            SELECT
+              FLOOR(patient_age_years / 5) * 5 AS age_bin_start,
+              COUNT(*) AS patients,
+              SUM(observation_count) AS observations
+            FROM {GOLD_SCHEMA}.observations_per_patient
+            WHERE patient_age_years IS NOT NULL
+            GROUP BY 1
+            ORDER BY 1
+            """
+        ).df()
+
+
+        labels = [
+            f"{int(a)}-{int(a) + 4}" for a in age_df["age_bin_start"].tolist()
+        ]
+
+        patients_fig = go.Figure(
+            data=[
+                go.Bar(
+                    x=labels,
+                    y=age_df["patients"],
+                    marker={"color": "#F58518"},
+                )
+            ]
+        )
+        patients_fig.update_layout(
+            title="Patients by age range (5-year bins)",
+            xaxis_title="Age range (years)",
+            yaxis_title="Patients",
+            height=360,
+        )
+
+        observations_fig = go.Figure(
+            data=[
+                go.Bar(
+                    x=labels,
+                    y=age_df["observations"],
+                    marker={"color": "#54A24B"},
+                )
+            ]
+        )
+        observations_fig.update_layout(
+            title="Total observations by age range (5-year bins)",
+            xaxis_title="Age range (years)",
+            yaxis_title="Observations",
+            height=360,
+        )
+        return mo.vstack([mo.ui.plotly(patients_fig), mo.ui.plotly(observations_fig)])
+
+
+    _()
+    return
+
+
 if __name__ == "__main__":
     app.run()
