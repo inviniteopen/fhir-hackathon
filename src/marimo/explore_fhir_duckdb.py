@@ -13,27 +13,27 @@ def _():
 
     import marimo as mo
 
-    # Add project root (for das) and src (for local modules) to path
+    # Add project root (for `das/` and the `src` package) to path
     repo_root = Path(__file__).parent.parent.parent
-    src_root = repo_root / "src"
-    for p in [repo_root, src_root]:
-        if str(p) not in sys.path:
-            sys.path.insert(0, str(p))
+    if str(repo_root) not in sys.path:
+        sys.path.insert(0, str(repo_root))
 
     import duckdb
     import pandas as pd
     import polars as pl
 
-    from constants import BRONZE_SCHEMA, GOLD_SCHEMA, SILVER_SCHEMA
-    from fhir_loader import get_table_summary
-    from transformations.patients import get_patient_summary
-    from validations.patients import get_validation_report
+    from src.bronze.loader import get_table_summary
+    from src.constants import BRONZE_SCHEMA, GOLD_SCHEMA, SILVER_SCHEMA
+    from src.silver.s1 import get_patient_summary
+    from src.validations.patients import get_validation_report
     return (
         BRONZE_SCHEMA,
         GOLD_SCHEMA,
         SILVER_SCHEMA,
         duckdb,
         get_table_summary,
+        get_patient_summary,
+        get_validation_report,
         mo,
         pd,
         repo_root,
