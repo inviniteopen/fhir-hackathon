@@ -37,15 +37,25 @@ def _collect_resources_by_type(
             resource_type = resource.get("resourceType")
             if resource_type:
                 resources_by_type.setdefault(resource_type, []).append(
-                    {
-                        "_source_file": json_path.name,
-                        "_source_bundle": bundle_id,
-                        "_full_url": entry.get("fullUrl"),
-                        **resource,
-                    }
+                    _annotate_resource(resource, entry, json_path.name, bundle_id)
                 )
 
     return resources_by_type
+
+
+def _annotate_resource(
+    resource: dict[str, Any],
+    entry: dict[str, Any],
+    source_file: str,
+    bundle_id: str | None,
+) -> dict[str, Any]:
+    """Attach metadata fields to a resource from its bundle entry."""
+    return {
+        "_source_file": source_file,
+        "_source_bundle": bundle_id,
+        "_full_url": entry.get("fullUrl"),
+        **resource,
+    }
 
 
 def load_bundles_to_tables(
