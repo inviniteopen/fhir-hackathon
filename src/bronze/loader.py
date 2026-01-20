@@ -155,9 +155,8 @@ def get_table_summary(con: duckdb.DuckDBPyConnection) -> dict[str, int]:
     ).fetchall()
     summary: dict[str, int] = {}
     for (table_name,) in table_names:
-        qualified = f"{BRONZE_SCHEMA}.{table_name}"
         count = con.execute(
             f"SELECT COUNT(*) FROM {_qualified_table(BRONZE_SCHEMA, table_name)}"
         ).fetchone()[0]
-        summary[qualified] = count
+        summary[f"{BRONZE_SCHEMA}.{table_name}"] = count
     return summary
