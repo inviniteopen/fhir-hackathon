@@ -1,7 +1,13 @@
-"""Gold layer - aggregations built from silver tables."""
+"""Gold layer - aggregations built from silver LazyFrames."""
 
-from src.gold.observations_per_patient import create_observations_per_patient
+from src.gold.observations_per_patient import (
+    build_observations_per_patient,
+    create_observations_per_patient,
+    save_observations_per_patient,
+)
 
 __all__ = [
+    "build_observations_per_patient",
     "create_observations_per_patient",
+    "save_observations_per_patient",
 ]

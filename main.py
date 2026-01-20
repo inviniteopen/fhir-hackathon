@@ -6,6 +6,7 @@ import argparse
 from pathlib import Path
 
 import duckdb
+import polars as pl
 
 from src.bronze import get_table_summary, load_bundles_to_tables
 from src.constants import BRONZE_SCHEMA, GOLD_SCHEMA, SILVER_SCHEMA
@@ -40,6 +41,37 @@ DEFAULT_INPUT_DIR = Path(__file__).resolve().parent / "data" / "EPS"
 DEFAULT_DB_PATH = Path(__file__).resolve().parent / "fhir.duckdb"
 
 
+def save_silver_tables(
+    con: duckdb.DuckDBPyConnection,
+    patient_lf: pl.LazyFrame,
+    condition_lf: pl.LazyFrame,
+    observation_lf: pl.LazyFrame,
+) -> None:
+    """Save silver LazyFrames to DuckDB for debugging purposes."""
+    con.execute(f"CREATE SCHEMA IF NOT EXISTS {SILVER_SCHEMA}")
+
+    patient_df = patient_lf.collect()
+    con.register("silver_patient_temp", patient_df.to_arrow())
+    con.execute(
+        f"CREATE OR REPLACE TABLE {SILVER_SCHEMA}.patient AS SELECT * FROM silver_patient_temp"
+    )
+    con.unregister("silver_patient_temp")
+
+    condition_df = condition_lf.collect()
+    con.register("silver_condition_temp", condition_df.to_arrow())
+    con.execute(
+        f"CREATE OR REPLACE TABLE {SILVER_SCHEMA}.condition AS SELECT * FROM silver_condition_temp"
+    )
+    con.unregister("silver_condition_temp")
+
+    observation_df = observation_lf.collect()
+    con.register("silver_observation_temp", observation_df.to_arrow())
+    con.execute(
+        f"CREATE OR REPLACE TABLE {SILVER_SCHEMA}.observation AS SELECT * FROM silver_observation_temp"
+    )
+    con.unregister("silver_observation_temp")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Load FHIR Bundle JSON files into DuckDB tables for analysis."
@@ -56,6 +88,11 @@ def main() -> None:
         type=Path,
         default=DEFAULT_DB_PATH,
         help=f"Path to DuckDB database file. Default: {DEFAULT_DB_PATH}",
+    )
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Write intermediate silver tables to DB for debugging",
     )
     args = parser.parse_args()
 
@@ -76,7 +113,7 @@ def main() -> None:
     for table_name, count in summary.items():
         print(f"  {table_name}: {count}")
 
-    # Transform bronze to silver
+    # Transform bronze to silver (in-memory only by default)
     print()
     print("Transforming to silver layer...")
 
@@ -97,36 +134,26 @@ def main() -> None:
     silver_observations_lf = transform_observations(bronze_observation_df)
     validated_observation_lf = validate_observation(silver_observations_lf)
 
-    # Save to silver schema
-    con.execute(f"CREATE SCHEMA IF NOT EXISTS {SILVER_SCHEMA}")
+    # Optionally save silver tables for debugging
+    if args.debug:
+        print("  (debug mode: writing silver tables to DB)")
+        save_silver_tables(
+            con,
+            validated_patient_lf,
+            validated_condition_lf,
+            validated_observation_lf,
+        )
 
-    validated_patient_df = validated_patient_lf.collect()
-    con.register("silver_patient_temp", validated_patient_df.to_arrow())
-    con.execute(
-        f"CREATE OR REPLACE TABLE {SILVER_SCHEMA}.patient AS SELECT * FROM silver_patient_temp"
-    )
-    con.unregister("silver_patient_temp")
-
-    validated_condition_df = validated_condition_lf.collect()
-    con.register("silver_condition_temp", validated_condition_df.to_arrow())
-    con.execute(
-        f"CREATE OR REPLACE TABLE {SILVER_SCHEMA}.condition AS SELECT * FROM silver_condition_temp"
-    )
-    con.unregister("silver_condition_temp")
-
-    validated_observation_df = validated_observation_lf.collect()
-    con.register("silver_observation_temp", validated_observation_df.to_arrow())
-    con.execute(
-        f"CREATE OR REPLACE TABLE {SILVER_SCHEMA}.observation AS SELECT * FROM silver_observation_temp"
-    )
-    con.unregister("silver_observation_temp")
-
-    # Build gold layer aggregates
+    # Build gold layer from silver LazyFrames
     print()
     print("Building gold layer...")
-    create_observations_per_patient(con)
+    create_observations_per_patient(
+        con,
+        patient_lf=validated_patient_lf,
+        observation_lf=validated_observation_lf,
+    )
 
-    # Print silver summary
+    # Print silver summary (computed from in-memory LazyFrames)
     patient_summary = get_patient_summary(validated_patient_lf)
     validation_report = get_validation_report(validated_patient_lf)
     condition_summary = get_condition_summary(validated_condition_lf)
@@ -139,10 +166,10 @@ def main() -> None:
     )
 
     print()
-    print("Silver tables:")
-    print(f"  {SILVER_SCHEMA}.patient: {patient_summary['total_patients']}")
-    print(f"  {SILVER_SCHEMA}.condition: {condition_summary['total_conditions']}")
-    print(f"  {SILVER_SCHEMA}.observation: {observation_summary['total_observations']}")
+    print("Silver layer (in-memory):")
+    print(f"  patient: {patient_summary['total_patients']}")
+    print(f"  condition: {condition_summary['total_conditions']}")
+    print(f"  observation: {observation_summary['total_observations']}")
 
     gold_patients = con.execute(
         f"SELECT COUNT(*) FROM {GOLD_SCHEMA}.observations_per_patient"

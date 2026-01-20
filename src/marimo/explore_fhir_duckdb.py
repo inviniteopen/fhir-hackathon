@@ -41,7 +41,15 @@ def _(mo):
     mo.md("""
     # Synthetic data exploration
 
-    This notebooks allows exploring data in bronze, silver, and gold layers. In addition, it shows a simple visualtion of observation count per patient and performs test on the distributions to validate data quality.
+    This notebook explores data across the medallion architecture layers.
+
+    **DAS storage policy:** Only raw data (bronze) and reporting data (gold) are persisted.
+    Silver layer transformations run in-memory to avoid exposing intermediate structures
+    and to allow flexible refactoring without migrations.
+
+    - **Bronze**: Raw FHIR resources as parsed from source files
+    - **Silver**: Cleaned and flattened data (in-memory only, `--debug` to persist)
+    - **Gold**: Aggregated data products for reporting and analysis
     """)
     return
 
@@ -125,16 +133,22 @@ def _(BRONZE_SCHEMA, con, mo, table):
 
 
 @app.cell
-def _(mo):
-    mo.md("""
+def _(SILVER_SCHEMA, con, get_table_names, mo):
+    silver_table_names = get_table_names(con, SILVER_SCHEMA)
+    _has_silver = len(silver_table_names) > 0
+
+    mo.md(f"""
     ## Silver Layer
+
+    {"" if _has_silver else "_Silver tables not available. Run `python main.py --debug` to populate silver tables for debugging._"}
     """)
-    return
+    return (silver_table_names,)
 
 
 @app.cell
-def _(SILVER_SCHEMA, con, get_table_names, mo):
-    silver_table_names = get_table_names(con, SILVER_SCHEMA)
+def _(mo, silver_table_names):
+    mo.stop(len(silver_table_names) == 0)
+
     silver_table = mo.ui.dropdown(
         options=silver_table_names,
         value=silver_table_names[0] if silver_table_names else None,
@@ -145,7 +159,9 @@ def _(SILVER_SCHEMA, con, get_table_names, mo):
 
 
 @app.cell
-def _(SILVER_SCHEMA, con, mo, silver_table):
+def _(SILVER_SCHEMA, con, mo, silver_table, silver_table_names):
+    mo.stop(len(silver_table_names) == 0)
+
     silver_sample_df = con.sql(
         f'SELECT * FROM {SILVER_SCHEMA}."{silver_table.value}" LIMIT 10'
     ).df()

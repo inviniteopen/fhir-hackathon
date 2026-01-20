@@ -26,6 +26,8 @@ In addition, testing the aggregated properties of synthetic data becomes importa
 
 The `das/` module provides typed dataframe abstractions for working with any source data. It enables type-safe dataframe operations across multiple engines. Following Medallion architecture we can process the data in steps and do different type of validation on each level. See the [interactive notebook demo](https://inviniteopen.github.io/invinite.github.io/) for an example of gold-level visual validation.
 
+**Storage policy:** Only raw data (bronze) and reporting data (gold) are persisted to the database. Silver layer runs in-memory to avoid exposing intermediate structures and to allow refactoring without migrations. Use `--debug` flag to persist silver tables for debugging.
+
 ![DAS Medallion architecture](docs/.assets/das-medallion.png)
 
 ### Currently Supported engines
