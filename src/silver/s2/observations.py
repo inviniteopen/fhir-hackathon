@@ -14,6 +14,7 @@ from typing import Any
 
 import polars as pl
 
+from src.common.constants import ObservationValueType
 from src.common.fhir import (
     extract_code_text,
     extract_primary_coding,
@@ -24,8 +25,12 @@ from src.common.fhir import (
 )
 from src.common.models import OBSERVATION_SCHEMA, Observation
 
+# =============================================================================
+# Column extraction functions - focused functions for extracting specific fields
+# =============================================================================
 
-def _extract_effective_datetime(row: dict[str, Any]) -> str | None:
+
+def extract_effective_datetime(row: dict[str, Any]) -> str | None:
     """Extract effective datetime from various FHIR effective[x] fields."""
     for key in ("effectiveDateTime", "effectiveInstant", "effectiveTime"):
         value = row.get(key)
@@ -44,59 +49,87 @@ def _extract_effective_datetime(row: dict[str, Any]) -> str | None:
     return None
 
 
-def _detect_value_type(value_obj: dict[str, Any]) -> str | None:
-    """Identify which value[x] type is present."""
+def detect_value_type(value_obj: dict[str, Any]) -> str | None:
+    """Identify which value[x] type is present in an observation or component."""
     value_quantity = value_obj.get("valueQuantity")
     if isinstance(value_quantity, dict):
-        return "quantity"
+        return ObservationValueType.QUANTITY
 
     value_cc = value_obj.get("valueCodeableConcept")
     if isinstance(value_cc, dict):
-        return "codeable_concept"
+        return ObservationValueType.CODEABLE_CONCEPT
 
-    for key, vtype in (
-        ("valueString", "string"),
-        ("valueBoolean", "boolean"),
-        ("valueInteger", "integer"),
-        ("valueDateTime", "datetime"),
-    ):
+    type_mapping = (
+        ("valueString", ObservationValueType.STRING),
+        ("valueBoolean", ObservationValueType.BOOLEAN),
+        ("valueInteger", ObservationValueType.INTEGER),
+        ("valueDateTime", ObservationValueType.DATETIME),
+    )
+    for key, vtype in type_mapping:
         if value_obj.get(key) is not None:
             return vtype
     return None
 
 
-def _extract_value_fields(value_obj: dict[str, Any]) -> dict[str, Any]:
-    """Extract value[x] fields from an Observation or component."""
-    value_type = _detect_value_type(value_obj)
+def extract_quantity_value(value_quantity: dict[str, Any] | None) -> float | None:
+    """Extract numeric value from a FHIR Quantity."""
+    if not isinstance(value_quantity, dict):
+        return None
+    raw_value = value_quantity.get("value")
+    if isinstance(raw_value, (int, float)):
+        return float(raw_value)
+    if raw_value is not None:
+        try:
+            return float(raw_value)
+        except (TypeError, ValueError):
+            return None
+    return None
 
+
+def extract_quantity_field(
+    value_quantity: dict[str, Any] | None, field: str
+) -> str | None:
+    """Extract a string field (unit, system, code) from a FHIR Quantity."""
+    if isinstance(value_quantity, dict):
+        return value_quantity.get(field)
+    return None
+
+
+def extract_subject_id(subject: dict[str, Any] | None) -> str | None:
+    """Extract patient ID from subject reference."""
+    subject_reference = extract_reference(subject)
+    return extract_reference_id(subject_reference)
+
+
+def extract_source_file(row: dict[str, Any]) -> str | None:
+    """Extract source file from row, handling both S1 and bronze formats."""
+    return row.get("source_file") or row.get("_source_file")
+
+
+def extract_source_bundle(row: dict[str, Any]) -> str | None:
+    """Extract source bundle from row, handling both S1 and bronze formats."""
+    return row.get("source_bundle") or row.get("_source_bundle")
+
+
+# =============================================================================
+# Composite extraction functions - build complex field structures
+# =============================================================================
+
+
+def extract_value_fields(value_obj: dict[str, Any]) -> dict[str, Any]:
+    """Extract all value[x] fields from an Observation or component."""
+    value_type = detect_value_type(value_obj)
     value_quantity = value_obj.get("valueQuantity")
     value_cc = value_obj.get("valueCodeableConcept")
-
-    quantity_value: float | None = None
-    if isinstance(value_quantity, dict):
-        raw_value = value_quantity.get("value")
-        if isinstance(raw_value, (int, float)):
-            quantity_value = float(raw_value)
-        elif raw_value is not None:
-            try:
-                quantity_value = float(raw_value)
-            except (TypeError, ValueError):
-                quantity_value = None
 
     cc_system, cc_code, cc_display = extract_primary_coding(value_cc)
 
     return {
         "value_type": value_type,
-        "value_quantity_value": quantity_value,
-        "value_quantity_unit": value_quantity.get("unit")
-        if isinstance(value_quantity, dict)
-        else None,
-        "value_quantity_system": value_quantity.get("system")
-        if isinstance(value_quantity, dict)
-        else None,
-        "value_quantity_code": value_quantity.get("code")
-        if isinstance(value_quantity, dict)
-        else None,
+        "value_quantity_value": extract_quantity_value(value_quantity),
+        "value_quantity_unit": extract_quantity_field(value_quantity, "unit"),
+        "value_quantity_system": extract_quantity_field(value_quantity, "system"),
+        "value_quantity_code": extract_quantity_field(value_quantity, "code"),
         "value_codeable_concept_text": extract_code_text(value_cc),
         "value_codeable_concept_system": cc_system,
         "value_codeable_concept_code": cc_code,
@@ -116,7 +149,8 @@ def _extract_value_fields(value_obj: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _build_performer_fields(performer_list: list[dict[str, Any]]) -> dict[str, list]:
+def extract_performer_fields(performer_list: list[dict[str, Any]]) -> dict[str, list]:
+    """Extract performer references and IDs from performer array."""
     performer_references: list[str | None] = []
     performer_ids: list[str | None] = []
     for performer in performer_list:
@@ -129,9 +163,10 @@ def _build_performer_fields(performer_list: list[dict[str, Any]]) -> dict[str, l
     }
 
 
-def _build_category_fields(
+def extract_category_fields(
     category_list: list[dict[str, Any]],
 ) -> dict[str, Any]:
+    """Extract category text, primary coding, and all codings from category array."""
     category_obj = category_list[0] if category_list else None
     category_text = (
         str(category_obj.get("text"))
@@ -163,7 +198,20 @@ def _build_category_fields(
     }
 
 
-def _build_components(component_list: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def extract_code_codings(code_obj: dict[str, Any] | None) -> list[dict[str, Any]]:
+    """Extract all codings from code CodeableConcept."""
+    return [
+        {
+            "system": coding.get("system"),
+            "code": coding.get("code"),
+            "display": coding.get("display"),
+        }
+        for coding in iter_codings(code_obj)
+    ]
+
+
+def extract_components(component_list: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Extract component array with flattened code and value fields."""
     components: list[dict[str, Any]] = []
     for idx, component in enumerate(component_list):
         component_code = component.get("code")
@@ -175,44 +223,36 @@ def _build_components(component_list: list[dict[str, Any]]) -> list[dict[str, An
             "code_code": comp_code,
             "code_display": comp_display,
         }
-        comp_row.update(_extract_value_fields(component))
+        comp_row.update(extract_value_fields(component))
         components.append(comp_row)
     return components
 
 
+# =============================================================================
+# Row transformation function
+# =============================================================================
+
+
 def transform_observation_row(row: dict[str, Any]) -> dict[str, Any]:
-    """Transform one S1 Observation row into a domain-modeled S2 row."""
-    observation_id = row.get("id")
+    """Transform one bronze/S1 Observation row into a domain-modeled S2 row."""
     code_obj = row.get("code")
     category_list = iter_dict_list(row.get("category"))
     performer_list = iter_dict_list(row.get("performer"))
     component_list = iter_dict_list(row.get("component"))
 
     code_system, code_code, code_display = extract_primary_coding(code_obj)
-
     subject_reference = extract_reference(row.get("subject"))
-
-    code_codings = [
-        {
-            "system": coding.get("system"),
-            "code": coding.get("code"),
-            "display": coding.get("display"),
-        }
-        for coding in iter_codings(code_obj)
-    ]
-
-    category_fields = _build_category_fields(category_list)
-    performer_fields = _build_performer_fields(performer_list)
-    components = _build_components(component_list)
+    category_fields = extract_category_fields(category_list)
+    performer_fields = extract_performer_fields(performer_list)
 
     silver_row: dict[str, Any] = {
-        "id": observation_id,
-        "source_file": row.get("source_file") or row.get("_source_file"),
-        "source_bundle": row.get("source_bundle") or row.get("_source_bundle"),
+        "id": row.get("id"),
+        "source_file": extract_source_file(row),
+        "source_bundle": extract_source_bundle(row),
         "status": row.get("status"),
         "subject_reference": subject_reference,
         "subject_id": extract_reference_id(subject_reference),
-        "effective_datetime": _extract_effective_datetime(row),
+        "effective_datetime": extract_effective_datetime(row),
         "issued": row.get("issued"),
         "category_text": category_fields["category_text"],
         "category_system": category_fields["category_system"],
@@ -224,20 +264,29 @@ def transform_observation_row(row: dict[str, Any]) -> dict[str, Any]:
         "code_display": code_display,
         "performer_references": performer_fields["performer_references"],
         "performer_ids": performer_fields["performer_ids"],
-        "code_codings": code_codings,
+        "code_codings": extract_code_codings(code_obj),
         "category_codings": category_fields["category_codings"],
-        "components": components,
+        "components": extract_components(component_list),
         "component_count": len(component_list),
         "validation_errors": [],
     }
-    silver_row.update(_extract_value_fields(row))
+    silver_row.update(extract_value_fields(row))
     return silver_row
 
 
-def transform_observations(input_df: pl.DataFrame) -> Observation:
-    """Transform observations to S2 domain model.
+# =============================================================================
+# Public API: transform and get functions
+# =============================================================================
 
-    Can accept either bronze DataFrame or S1 LazyFrame as input.
+
+def transform_observations(input_df: pl.DataFrame) -> Observation:
+    """Transform observations from bronze/S1 to S2 domain model.
+
+    Args:
+        input_df: Bronze or S1 observations DataFrame
+
+    Returns:
+        Typed Observation LazyFrame with S2 domain model
     """
     silver_rows = [transform_observation_row(row) for row in input_df.to_dicts()]
     silver_lf = pl.DataFrame(silver_rows, schema=OBSERVATION_SCHEMA).lazy()
@@ -245,7 +294,14 @@ def transform_observations(input_df: pl.DataFrame) -> Observation:
 
 
 def get_observation_summary(silver_lf: Observation | pl.LazyFrame) -> dict[str, int]:
-    """Get summary stats for S2 observations."""
+    """Get summary statistics for S2 observations.
+
+    Args:
+        silver_lf: S2 Observation LazyFrame
+
+    Returns:
+        Dictionary with counts for various observation attributes
+    """
     return (
         silver_lf.select(
             pl.len().alias("total_observations"),

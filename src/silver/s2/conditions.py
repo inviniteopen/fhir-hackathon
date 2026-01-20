@@ -21,66 +21,157 @@ from src.common.fhir import (
 )
 from src.common.models import CONDITION_SCHEMA, Condition
 
+# =============================================================================
+# Column extraction functions - focused functions for extracting specific fields
+# =============================================================================
+
+
+def extract_patient_id(subject: dict[str, Any] | None) -> str | None:
+    """Extract patient ID from subject reference."""
+    if not subject:
+        return None
+    patient_ref = subject.get("reference")
+    return extract_reference_id(patient_ref)
+
+
+def extract_patient_display(subject: dict[str, Any] | None) -> str | None:
+    """Extract patient display from subject reference."""
+    if not subject:
+        return None
+    return subject.get("display")
+
+
+def extract_category_code(category_list: list[dict] | None) -> str | None:
+    """Extract category code from condition category array."""
+    category = extract_category_from_list(category_list)
+    return category["code"]
+
+
+def extract_category_display(category_list: list[dict] | None) -> str | None:
+    """Extract category display from condition category array."""
+    category = extract_category_from_list(category_list)
+    return category["display"]
+
+
+def extract_code_system(code_obj: dict[str, Any] | None) -> str | None:
+    """Extract code system from condition code."""
+    if not code_obj:
+        return None
+    coding = extract_first_coding_as_dict(code_obj)
+    return coding["system"]
+
+
+def extract_code(code_obj: dict[str, Any] | None) -> str | None:
+    """Extract code from condition code."""
+    if not code_obj:
+        return None
+    coding = extract_first_coding_as_dict(code_obj)
+    return coding["code"]
+
+
+def extract_code_display(code_obj: dict[str, Any] | None) -> str | None:
+    """Extract code display from condition code."""
+    if not code_obj:
+        return None
+    coding = extract_first_coding_as_dict(code_obj)
+    return coding["display"]
+
+
+def extract_code_text(code_obj: dict[str, Any] | None) -> str | None:
+    """Extract code text from condition code."""
+    if not code_obj:
+        return None
+    return code_obj.get("text")
+
+
+def extract_onset_date(row: dict[str, Any]) -> str | None:
+    """Extract onset date from onsetDateTime or _onsetDateTime extension."""
+    onset_date = row.get("onsetDateTime")
+    if onset_date is not None:
+        return onset_date
+    onset_ext = row.get("_onsetDateTime")
+    if isinstance(onset_ext, dict):
+        return onset_ext.get("value")
+    return None
+
+
+def extract_abatement_date(row: dict[str, Any]) -> str | None:
+    """Extract abatement date from abatementDateTime or _abatementDateTime extension."""
+    abatement_date = row.get("abatementDateTime")
+    if abatement_date is not None:
+        return abatement_date
+    abatement_ext = row.get("_abatementDateTime")
+    if isinstance(abatement_ext, dict):
+        return abatement_ext.get("value")
+    return None
+
+
+def extract_asserter_display(asserter: dict[str, Any] | None) -> str | None:
+    """Extract asserter display from asserter reference."""
+    if not asserter:
+        return None
+    return asserter.get("display")
+
+
+# =============================================================================
+# Row transformation function
+# =============================================================================
+
 
 def transform_condition_row(row: dict[str, Any]) -> dict[str, Any]:
     """Transform a single bronze condition row to S2 domain model."""
-    # Extract subject (patient) reference
-    subject = row.get("subject", {}) or {}
-    patient_ref = subject.get("reference")
-    patient_display = subject.get("display")
-
-    # Extract category
-    category = extract_category_from_list(row.get("category"))
-
-    # Extract code (diagnosis)
-    code_obj = row.get("code", {}) or {}
-    code_coding = extract_first_coding_as_dict(code_obj)
-
-    # Extract asserter
-    asserter = row.get("asserter", {}) or {}
-
-    # Handle onset date - may be in onsetDateTime or need extraction from _onsetDateTime
-    onset_date = row.get("onsetDateTime")
-    if onset_date is None:
-        onset_ext = row.get("_onsetDateTime")
-        if isinstance(onset_ext, dict):
-            onset_date = onset_ext.get("value")
-
-    # Handle abatement date similarly
-    abatement_date = row.get("abatementDateTime")
-    if abatement_date is None:
-        abatement_ext = row.get("_abatementDateTime")
-        if isinstance(abatement_ext, dict):
-            abatement_date = abatement_ext.get("value")
+    subject = row.get("subject") or {}
+    category_list = row.get("category")
+    code_obj = row.get("code") or {}
+    asserter = row.get("asserter") or {}
 
     return {
         "id": row.get("id"),
         "source_file": row.get("_source_file"),
         "source_bundle": row.get("_source_bundle"),
-        "patient_id": extract_reference_id(patient_ref),
-        "patient_display": patient_display,
-        "category_code": category["code"],
-        "category_display": category["display"],
-        "code_system": code_coding["system"],
-        "code": code_coding["code"],
-        "code_display": code_coding["display"],
-        "code_text": code_obj.get("text"),
-        "onset_date": onset_date,
-        "abatement_date": abatement_date,
-        "asserter_display": asserter.get("display"),
+        "patient_id": extract_patient_id(subject),
+        "patient_display": extract_patient_display(subject),
+        "category_code": extract_category_code(category_list),
+        "category_display": extract_category_display(category_list),
+        "code_system": extract_code_system(code_obj),
+        "code": extract_code(code_obj),
+        "code_display": extract_code_display(code_obj),
+        "code_text": extract_code_text(code_obj),
+        "onset_date": extract_onset_date(row),
+        "abatement_date": extract_abatement_date(row),
+        "asserter_display": extract_asserter_display(asserter),
         "validation_errors": [],
     }
 
 
+# =============================================================================
+# Public API: transform and get functions
+# =============================================================================
+
+
 def transform_condition(bronze_df: pl.DataFrame) -> Condition:
-    """Transform bronze condition DataFrame to S2 domain model."""
+    """Transform bronze condition DataFrame to S2 domain model.
+
+    Args:
+        bronze_df: Bronze Condition DataFrame
+
+    Returns:
+        Typed Condition LazyFrame with S2 domain model
+    """
     bronze_rows = bronze_df.to_dicts()
     silver_rows = [transform_condition_row(row) for row in bronze_rows]
     return Condition.from_dicts(silver_rows, CONDITION_SCHEMA)
 
 
 def get_condition_summary(silver_lf: Condition | pl.LazyFrame) -> dict[str, int]:
-    """Get summary statistics for S2 condition data."""
+    """Get summary statistics for S2 condition data.
+
+    Args:
+        silver_lf: S2 Condition LazyFrame
+
+    Returns:
+        Dictionary with counts for various condition attributes
+    """
     return (
         silver_lf.select(
             pl.len().alias("total_conditions"),

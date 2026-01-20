@@ -14,6 +14,7 @@ from typing import Any
 
 import polars as pl
 
+from src.common.constants import ExtensionUrl, IdentifierSystem
 from src.common.fhir import (
     extract_address_field,
     extract_extension_value,
@@ -22,6 +23,85 @@ from src.common.fhir import (
     extract_telecom,
 )
 from src.common.models import PATIENT_SCHEMA, Patient
+
+# =============================================================================
+# Column extraction functions - focused functions for extracting specific fields
+# =============================================================================
+
+
+def extract_family_name(name_list: list[dict] | None) -> str | None:
+    """Extract family name from FHIR name array."""
+    return extract_from_name_list(name_list, "family")
+
+
+def extract_given_names(name_list: list[dict] | None) -> str | None:
+    """Extract given names from FHIR name array."""
+    return extract_from_name_list(name_list, "given")
+
+
+def extract_full_name(name_list: list[dict] | None) -> str | None:
+    """Extract full name text from FHIR name array."""
+    return extract_from_name_list(name_list, "text")
+
+
+def extract_phone(telecom_list: list[dict] | None) -> str | None:
+    """Extract phone number from FHIR telecom array."""
+    return extract_telecom(telecom_list, "phone")
+
+
+def extract_city(address_list: list[dict] | None) -> str | None:
+    """Extract city from FHIR address array."""
+    return extract_address_field(address_list, "city")
+
+
+def extract_postal_code(address_list: list[dict] | None) -> str | None:
+    """Extract postal code from FHIR address array."""
+    return extract_address_field(address_list, "postalCode")
+
+
+def extract_country(address_list: list[dict] | None) -> str | None:
+    """Extract country from FHIR address array."""
+    return extract_address_field(address_list, "country")
+
+
+def extract_address_line(address_list: list[dict] | None) -> str | None:
+    """Extract address line from FHIR address array."""
+    return extract_address_field(address_list, "line")
+
+
+def extract_nationality_code(extension_list: list[dict] | None) -> str | None:
+    """Extract nationality code from patient nationality extension."""
+    nationality_code = extract_extension_value(
+        extension_list,
+        ExtensionUrl.NATIONALITY,
+        ["valueCodeableConcept", "coding", 0, "code"],
+    )
+    if nationality_code is not None:
+        return nationality_code
+
+    # Fallback for list access in extension
+    for ext in extension_list or []:
+        if isinstance(ext, dict) and ext.get("url") == ExtensionUrl.NATIONALITY:
+            value_cc = ext.get("valueCodeableConcept", {})
+            codings = value_cc.get("coding", [])
+            if codings and isinstance(codings, list) and len(codings) > 0:
+                return codings[0].get("code")
+    return None
+
+
+def extract_identifier_eci(identifier_list: list[dict] | None) -> str | None:
+    """Extract ECI identifier from FHIR identifier array."""
+    return extract_identifier(identifier_list, IdentifierSystem.ECI)
+
+
+def extract_identifier_mr(identifier_list: list[dict] | None) -> str | None:
+    """Extract MR identifier from FHIR identifier array."""
+    return extract_identifier(identifier_list, IdentifierSystem.MR)
+
+
+# =============================================================================
+# Row transformation function
+# =============================================================================
 
 
 def transform_patient_row(row: dict[str, Any]) -> dict[str, Any]:
@@ -32,60 +112,55 @@ def transform_patient_row(row: dict[str, Any]) -> dict[str, Any]:
     extension_list = row.get("extension")
     identifier_list = row.get("identifier")
 
-    # Extract nationality from extension
-    nationality_code = extract_extension_value(
-        extension_list,
-        "http://hl7.org/fhir/StructureDefinition/patient-nationality",
-        ["valueCodeableConcept", "coding", 0, "code"],
-    )
-    # Fallback for list access in extension
-    if nationality_code is None:
-        for ext in extension_list or []:
-            if (
-                isinstance(ext, dict)
-                and ext.get("url")
-                == "http://hl7.org/fhir/StructureDefinition/patient-nationality"
-            ):
-                value_cc = ext.get("valueCodeableConcept", {})
-                codings = value_cc.get("coding", [])
-                if codings and isinstance(codings, list) and len(codings) > 0:
-                    nationality_code = codings[0].get("code")
-                    break
-
     return {
         "id": row.get("id"),
         "source_file": row.get("_source_file"),
         "source_bundle": row.get("_source_bundle"),
-        "family_name": extract_from_name_list(name_list, "family"),
-        "given_names": extract_from_name_list(name_list, "given"),
-        "full_name": extract_from_name_list(name_list, "text"),
+        "family_name": extract_family_name(name_list),
+        "given_names": extract_given_names(name_list),
+        "full_name": extract_full_name(name_list),
         "birth_date": row.get("birthDate"),
         "gender": row.get("gender"),
-        "phone": extract_telecom(telecom_list, "phone"),
-        "address_line": extract_address_field(address_list, "line"),
-        "city": extract_address_field(address_list, "city"),
-        "postal_code": extract_address_field(address_list, "postalCode"),
-        "country": extract_address_field(address_list, "country"),
-        "nationality_code": nationality_code,
-        "identifier_eci": extract_identifier(
-            identifier_list, "http://ec.europa.eu/identifier/eci"
-        ),
-        "identifier_mr": extract_identifier(
-            identifier_list, "http://local.setting.eu/identifier"
-        ),
+        "phone": extract_phone(telecom_list),
+        "address_line": extract_address_line(address_list),
+        "city": extract_city(address_list),
+        "postal_code": extract_postal_code(address_list),
+        "country": extract_country(address_list),
+        "nationality_code": extract_nationality_code(extension_list),
+        "identifier_eci": extract_identifier_eci(identifier_list),
+        "identifier_mr": extract_identifier_mr(identifier_list),
         "validation_errors": [],
     }
 
 
+# =============================================================================
+# Public API: transform and get functions
+# =============================================================================
+
+
 def transform_patient(bronze_df: pl.DataFrame) -> Patient:
-    """Transform bronze patient DataFrame to S2 domain model."""
+    """Transform bronze patient DataFrame to S2 domain model.
+
+    Args:
+        bronze_df: Bronze Patient DataFrame
+
+    Returns:
+        Typed Patient LazyFrame with S2 domain model
+    """
     bronze_rows = bronze_df.to_dicts()
     silver_rows = [transform_patient_row(row) for row in bronze_rows]
     return Patient.from_dicts(silver_rows, PATIENT_SCHEMA)
 
 
 def get_patient_summary(silver_lf: Patient | pl.LazyFrame) -> dict[str, int]:
-    """Get summary statistics for S2 patient data."""
+    """Get summary statistics for S2 patient data.
+
+    Args:
+        silver_lf: S2 Patient LazyFrame
+
+    Returns:
+        Dictionary with counts for various patient attributes
+    """
     return (
         silver_lf.select(
             pl.len().alias("total_patients"),
