@@ -72,6 +72,29 @@ def _(db_path, duckdb):
 
 
 @app.cell
+def _(con, duckdb):
+    def get_table_names(
+        con: duckdb.DuckDBPyConnection, schema: str
+    ) -> list[str]:
+        return [
+            row[0]
+            for row in con.sql(
+                """
+                SELECT table_name
+                FROM duckdb_tables()
+                WHERE schema_name = ?
+                  AND internal = FALSE
+                  AND temporary = FALSE
+                ORDER BY table_name
+                """,
+                params=[schema],
+            ).fetchall()
+        ]
+
+    return (get_table_names,)
+
+
+@app.cell
 def _(mo):
     mo.md("""
     ## Bronze Layer Summary
@@ -94,20 +117,8 @@ def _(con, get_table_summary, pd):
 
 
 @app.cell
-def _(BRONZE_SCHEMA, con, mo):
-    bronze_table_names = [
-        row[0]
-        for row in con.execute(
-            """
-            SELECT table_name
-            FROM information_schema.tables
-            WHERE table_schema = ?
-              AND table_type = 'BASE TABLE'
-            ORDER BY table_name
-            """,
-            [BRONZE_SCHEMA],
-        ).fetchall()
-    ]
+def _(BRONZE_SCHEMA, con, get_table_names, mo):
+    bronze_table_names = get_table_names(con, BRONZE_SCHEMA)
     table = mo.ui.dropdown(
         options=bronze_table_names,
         value=bronze_table_names[0] if bronze_table_names else None,
@@ -135,20 +146,8 @@ def _(mo):
 
 
 @app.cell
-def _(SILVER_SCHEMA, con, mo):
-    silver_table_names = [
-        row[0]
-        for row in con.execute(
-            """
-            SELECT table_name
-            FROM information_schema.tables
-            WHERE table_schema = ?
-              AND table_type = 'BASE TABLE'
-            ORDER BY table_name
-            """,
-            [SILVER_SCHEMA],
-        ).fetchall()
-    ]
+def _(SILVER_SCHEMA, con, get_table_names, mo):
+    silver_table_names = get_table_names(con, SILVER_SCHEMA)
     silver_table = mo.ui.dropdown(
         options=silver_table_names,
         value=silver_table_names[0] if silver_table_names else None,
