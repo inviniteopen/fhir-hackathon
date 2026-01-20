@@ -112,16 +112,22 @@ def _extract_value_fields(value_obj: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def transform_observation_row(row: dict[str, Any]) -> dict[str, Any]:
-    """Transform one bronze Observation row into a single silver row."""
-    observation_id = row.get("id")
-    code_obj = row.get("code")
-    category_list = iter_dict_list(row.get("category"))
-    performer_list = iter_dict_list(row.get("performer"))
-    component_list = iter_dict_list(row.get("component"))
+def _build_performer_fields(performer_list: list[dict[str, Any]]) -> dict[str, list]:
+    performer_references: list[str | None] = []
+    performer_ids: list[str | None] = []
+    for performer in performer_list:
+        performer_reference = extract_reference(performer)
+        performer_references.append(performer_reference)
+        performer_ids.append(extract_reference_id(performer_reference))
+    return {
+        "performer_references": performer_references,
+        "performer_ids": performer_ids,
+    }
 
-    code_system, code_code, code_display = extract_primary_coding(code_obj)
 
+def _build_category_fields(
+    category_list: list[dict[str, Any]],
+) -> dict[str, Any]:
     category_obj = category_list[0] if category_list else None
     category_text = (
         str(category_obj.get("text"))
@@ -131,24 +137,6 @@ def transform_observation_row(row: dict[str, Any]) -> dict[str, Any]:
     category_system, category_code, category_display = extract_primary_coding(
         category_obj
     )
-
-    subject_reference = extract_reference(row.get("subject"))
-
-    performer_references: list[str | None] = []
-    performer_ids: list[str | None] = []
-    for performer in performer_list:
-        performer_reference = extract_reference(performer)
-        performer_references.append(performer_reference)
-        performer_ids.append(extract_reference_id(performer_reference))
-
-    code_codings = [
-        {
-            "system": coding.get("system"),
-            "code": coding.get("code"),
-            "display": coding.get("display"),
-        }
-        for coding in iter_codings(code_obj)
-    ]
 
     category_codings: list[dict[str, Any]] = []
     for idx, cat in enumerate(category_list):
@@ -162,6 +150,16 @@ def transform_observation_row(row: dict[str, Any]) -> dict[str, Any]:
                 }
             )
 
+    return {
+        "category_text": category_text,
+        "category_system": category_system,
+        "category_code": category_code,
+        "category_display": category_display,
+        "category_codings": category_codings,
+    }
+
+
+def _build_components(component_list: list[dict[str, Any]]) -> list[dict[str, Any]]:
     components: list[dict[str, Any]] = []
     for idx, component in enumerate(component_list):
         component_code = component.get("code")
@@ -175,6 +173,33 @@ def transform_observation_row(row: dict[str, Any]) -> dict[str, Any]:
         }
         comp_row.update(_extract_value_fields(component))
         components.append(comp_row)
+    return components
+
+
+def transform_observation_row(row: dict[str, Any]) -> dict[str, Any]:
+    """Transform one bronze Observation row into a single silver row."""
+    observation_id = row.get("id")
+    code_obj = row.get("code")
+    category_list = iter_dict_list(row.get("category"))
+    performer_list = iter_dict_list(row.get("performer"))
+    component_list = iter_dict_list(row.get("component"))
+
+    code_system, code_code, code_display = extract_primary_coding(code_obj)
+
+    subject_reference = extract_reference(row.get("subject"))
+
+    code_codings = [
+        {
+            "system": coding.get("system"),
+            "code": coding.get("code"),
+            "display": coding.get("display"),
+        }
+        for coding in iter_codings(code_obj)
+    ]
+
+    category_fields = _build_category_fields(category_list)
+    performer_fields = _build_performer_fields(performer_list)
+    components = _build_components(component_list)
 
     silver_row: dict[str, Any] = {
         "id": observation_id,
@@ -185,18 +210,18 @@ def transform_observation_row(row: dict[str, Any]) -> dict[str, Any]:
         "subject_id": extract_reference_id(subject_reference),
         "effective_datetime": _extract_effective_datetime(row),
         "issued": row.get("issued"),
-        "category_text": category_text,
-        "category_system": category_system,
-        "category_code": category_code,
-        "category_display": category_display,
+        "category_text": category_fields["category_text"],
+        "category_system": category_fields["category_system"],
+        "category_code": category_fields["category_code"],
+        "category_display": category_fields["category_display"],
         "code_text": extract_code_text(code_obj),
         "code_system": code_system,
         "code_code": code_code,
         "code_display": code_display,
-        "performer_references": performer_references,
-        "performer_ids": performer_ids,
+        "performer_references": performer_fields["performer_references"],
+        "performer_ids": performer_fields["performer_ids"],
         "code_codings": code_codings,
-        "category_codings": category_codings,
+        "category_codings": category_fields["category_codings"],
         "components": components,
         "component_count": len(component_list),
         "validation_errors": [],
