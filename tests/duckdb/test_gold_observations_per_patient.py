@@ -4,7 +4,7 @@ from datetime import date
 
 import duckdb
 
-from src.gold_layer import create_observations_per_patient
+from src.gold import create_observations_per_patient
 
 
 def test_create_observations_per_patient_counts_and_age() -> None:
@@ -62,4 +62,3 @@ def test_create_observations_per_patient_counts_and_age() -> None:
         ("p2", 1, None, None),
         ("p3", 0, None, None),
     ]
-

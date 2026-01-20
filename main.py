@@ -7,18 +7,18 @@ from pathlib import Path
 
 import duckdb
 
+from src.bronze import get_table_summary, load_bundles_to_tables
 from src.constants import BRONZE_SCHEMA, GOLD_SCHEMA, SILVER_SCHEMA
-from src.fhir_loader import get_table_summary, load_bundles_to_tables
-from src.gold_layer import create_observations_per_patient
-from src.transformations.conditions import (
+from src.gold import create_observations_per_patient
+from src.silver.s1.conditions import (
     get_condition_summary,
     transform_condition,
 )
-from src.transformations.observations import (
+from src.silver.s1.observations import (
     get_observation_summary,
     transform_observations,
 )
-from src.transformations.patients import (
+from src.silver.s1.patients import (
     get_patient_summary,
     transform_patient,
 )
