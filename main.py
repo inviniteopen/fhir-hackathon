@@ -7,8 +7,9 @@ from pathlib import Path
 
 import duckdb
 
-from src.constants import BRONZE_SCHEMA, SILVER_SCHEMA
+from src.constants import BRONZE_SCHEMA, GOLD_SCHEMA, SILVER_SCHEMA
 from src.fhir_loader import get_table_summary, load_bundles_to_tables
+from src.gold_layer import create_observations_per_patient
 from src.transformations.conditions import (
     get_condition_summary,
     transform_condition,
@@ -120,6 +121,11 @@ def main() -> None:
     )
     con.unregister("silver_observation_temp")
 
+    # Build gold layer aggregates
+    print()
+    print("Building gold layer...")
+    create_observations_per_patient(con)
+
     # Print silver summary
     patient_summary = get_patient_summary(validated_patient_lf)
     validation_report = get_validation_report(validated_patient_lf)
@@ -137,6 +143,13 @@ def main() -> None:
     print(f"  {SILVER_SCHEMA}.patient: {patient_summary['total_patients']}")
     print(f"  {SILVER_SCHEMA}.condition: {condition_summary['total_conditions']}")
     print(f"  {SILVER_SCHEMA}.observation: {observation_summary['total_observations']}")
+
+    gold_patients = con.execute(
+        f"SELECT COUNT(*) FROM {GOLD_SCHEMA}.observations_per_patient"
+    ).fetchone()[0]
+    print()
+    print("Gold tables:")
+    print(f"  {GOLD_SCHEMA}.observations_per_patient: {gold_patients}")
 
     print()
     print("Patient data quality:")
