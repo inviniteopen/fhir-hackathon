@@ -32,8 +32,6 @@ def _():
         SILVER_SCHEMA,
         duckdb,
         get_table_summary,
-        get_patient_summary,
-        get_validation_report,
         mo,
         pd,
         repo_root,
@@ -199,19 +197,6 @@ def _(mo):
 
     Uses `gold.observations_per_patient`.
     """)
-    return
-
-
-@app.cell
-def _(mo):
-    obs_bin_width = mo.ui.slider(
-        start=1,
-        stop=50,
-        value=5,
-        step=1,
-        label="Observation count bin width",
-    )
-    obs_bin_width
     return
 
 
