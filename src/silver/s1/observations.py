@@ -40,16 +40,36 @@ def _extract_effective_datetime(row: dict[str, Any]) -> str | None:
     return None
 
 
+def _detect_value_type(value_obj: dict[str, Any]) -> str | None:
+    """Identify which value[x] type is present."""
+    value_quantity = value_obj.get("valueQuantity")
+    if isinstance(value_quantity, dict):
+        return "quantity"
+
+    value_cc = value_obj.get("valueCodeableConcept")
+    if isinstance(value_cc, dict):
+        return "codeable_concept"
+
+    for key, vtype in (
+        ("valueString", "string"),
+        ("valueBoolean", "boolean"),
+        ("valueInteger", "integer"),
+        ("valueDateTime", "datetime"),
+    ):
+        if value_obj.get(key) is not None:
+            return vtype
+    return None
+
+
 def _extract_value_fields(value_obj: dict[str, Any]) -> dict[str, Any]:
     """Extract value[x] fields from an Observation or component."""
-    value_type: str | None = None
+    value_type = _detect_value_type(value_obj)
 
     value_quantity = value_obj.get("valueQuantity")
     value_cc = value_obj.get("valueCodeableConcept")
 
     quantity_value: float | None = None
     if isinstance(value_quantity, dict):
-        value_type = "quantity"
         raw_value = value_quantity.get("value")
         if isinstance(raw_value, (int, float)):
             quantity_value = float(raw_value)
@@ -60,19 +80,6 @@ def _extract_value_fields(value_obj: dict[str, Any]) -> dict[str, Any]:
                 quantity_value = None
 
     cc_system, cc_code, cc_display = extract_primary_coding(value_cc)
-    if isinstance(value_cc, dict):
-        value_type = value_type or "codeable_concept"
-
-    if value_type is None:
-        for key, vtype in (
-            ("valueString", "string"),
-            ("valueBoolean", "boolean"),
-            ("valueInteger", "integer"),
-            ("valueDateTime", "datetime"),
-        ):
-            if value_obj.get(key) is not None:
-                value_type = vtype
-                break
 
     return {
         "value_type": value_type,
