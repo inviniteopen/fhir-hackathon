@@ -11,7 +11,7 @@
   - Silver layer contains a cleaned up version from the bronze layer data where nested fields are flattened and validations are performed for values
   - Gold layer contains polished "data products". In our application, these tables contain aggregated distributions from data, that can be visualized and tested to ensure that synthetic data follow forms realistic distributions
 - A marimo notebook ties everything together. It allows users to explore data in bronze, silver and gold layers through table UI and visualisations.
-    - Static export of the notebook is available as [Github Page](https://inviniteopen.github.io/invinite.github.io/). Clone the repository for running interactive notebooks
+  - Static export of the notebook is available as [interactive notebook demo](https://inviniteopen.github.io/invinite.github.io/). Clone the repository for running interactive notebooks
 
 ## Why this matters?
 
@@ -24,7 +24,7 @@ In addition, testing the aggregated properties of synthetic data becomes importa
 
 ## Data as Software (DAS)
 
-The `das/` module provides typed dataframe abstractions for working with any source data. It enables type-safe dataframe operations across multiple engines. Following Medallion architecture we can process the data in steps and do different type of validation on each level.
+The `das/` module provides typed dataframe abstractions for working with any source data. It enables type-safe dataframe operations across multiple engines. Following Medallion architecture we can process the data in steps and do different type of validation on each level. See the [interactive notebook demo](https://inviniteopen.github.io/invinite.github.io/) for an example of gold-level visual validation.
 
 ![DAS Medallion architecture](docs/.assets/das-medallion.png)
 
