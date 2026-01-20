@@ -11,15 +11,15 @@ import polars as pl
 from src.bronze import get_table_summary, load_bundles_to_tables
 from src.constants import Schema
 from src.gold import create_observations_per_patient
-from src.silver.s1.conditions import (
+from src.silver.s2.conditions import (
     get_condition_summary,
     transform_condition,
 )
-from src.silver.s1.observations import (
+from src.silver.s2.observations import (
     get_observation_summary,
     transform_observations,
 )
-from src.silver.s1.patients import (
+from src.silver.s2.patients import (
     get_patient_summary,
     transform_patient,
 )
@@ -118,16 +118,12 @@ def main() -> None:
     print("Transforming to silver layer...")
 
     # Patient transformation
-    bronze_patient_df = con.execute(
-        f"SELECT * FROM {Schema.BRONZE}.patient"
-    ).pl()
+    bronze_patient_df = con.execute(f"SELECT * FROM {Schema.BRONZE}.patient").pl()
     silver_patient_lf = transform_patient(bronze_patient_df)
     validated_patient_lf = validate_patient(silver_patient_lf)
 
     # Condition transformation
-    bronze_condition_df = con.execute(
-        f"SELECT * FROM {Schema.BRONZE}.condition"
-    ).pl()
+    bronze_condition_df = con.execute(f"SELECT * FROM {Schema.BRONZE}.condition").pl()
     silver_condition_lf = transform_condition(bronze_condition_df)
     validated_condition_lf = validate_condition(silver_condition_lf)
 

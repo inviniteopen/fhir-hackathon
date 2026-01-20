@@ -7,9 +7,12 @@
 - Synthetic [SYNDERAI](https://synderai.net/) data FHIR Bundle JSON files are read from `data/EPS`
 - Nested JSON data is flattened and stored to duckdb tables. New table is created per each resource type
 - Data layout follows the widely adopted medallion-pattern:
-  - Bronze layer contains data with minimal changes
-  - Silver layer contains a cleaned up version from the bronze layer data where nested fields are flattened and validations are performed for values
-  - Gold layer contains polished "data products". In our application, these tables contain aggregated distributions from data, that can be visualized and tested to ensure that synthetic data follow forms realistic distributions
+  - **Bronze** - Raw data with minimal changes (source metadata added)
+  - **Silver** - Progressively refined data in multiple stages:
+    - **S1** - Cleaned bronze: same structure as source, with normalization and source tracking
+    - **S2** - Domain-modeled: source data transformed toward domain concepts and flattened for analytics
+    - **S3** - Unified model: multiple sources merged into common schema (not yet implemented)
+  - **Gold** - Aggregated data products for reporting and analysis
 - A marimo notebook ties everything together. It allows users to explore data in bronze, silver and gold layers through table UI and visualisations.
   - Static export of the notebook is available as [Notebook demo](https://inviniteopen.github.io/invinite.github.io/). Clone the repository for running interactive notebooks
 

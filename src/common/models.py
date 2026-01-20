@@ -1,4 +1,13 @@
-"""TypedDataFrame class definitions for FHIR data models."""
+"""TypedDataFrame class definitions for FHIR data models.
+
+Silver layer concepts:
+- S1: Cleaned bronze - same structure as source, with source metadata added
+- S2: Domain-modeled - source data transformed toward domain concepts
+- S3: Unified model - multiple sources merged into common schema (not yet implemented)
+
+S1 uses dynamic schemas (preserves source structure), so no typed models are defined.
+S2 models are typed to enforce domain schema consistency.
+"""
 
 from typing import Any, Optional
 
@@ -8,7 +17,7 @@ from das.engine.polars.typed_dataframe import Col, TypedLazyFrame
 
 
 class Patient(TypedLazyFrame):
-    """Patient schema - flattened and cleaned."""
+    """Patient S2 schema - domain-modeled from FHIR Patient."""
 
     id: Col[str]
     source_file: Col[str]
@@ -30,7 +39,14 @@ class Patient(TypedLazyFrame):
 
 
 class Observation(TypedLazyFrame):
-    """Observation schema - flattened, cleaned, and validated."""
+    """Observation S2 schema - domain-modeled from FHIR Observation.
+
+    Flattens nested FHIR structures into typed columns suitable for analytics:
+    - code.coding[0] → code_system, code_code, code_display
+    - subject.reference → subject_id
+    - valueQuantity → value_quantity_value, value_quantity_unit
+    - component[] → components list with extracted values
+    """
 
     id: Col[str]
     source_file: Col[str]
@@ -78,7 +94,7 @@ class Observation(TypedLazyFrame):
 
 
 class Condition(TypedLazyFrame):
-    """Condition schema - flattened diagnoses/problems."""
+    """Condition S2 schema - domain-modeled from FHIR Condition."""
 
     id: Col[str]
     source_file: Col[str]
@@ -120,6 +136,7 @@ PATIENT_SCHEMA = {
 }
 
 
+# S2 Observation schema - domain-modeled
 CODE_CODINGS_TYPE = pl.List(
     pl.Struct(
         [

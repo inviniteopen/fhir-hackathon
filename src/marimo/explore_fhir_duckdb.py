@@ -46,7 +46,10 @@ def _(mo):
     and to allow flexible refactoring without migrations.
 
     - **Bronze**: Raw FHIR resources as parsed from source files
-    - **Silver**: Cleaned and flattened data (in-memory only, `--debug` to persist)
+    - **Silver**: Progressively refined data:
+      - S1: Cleaned bronze (same structure as source)
+      - S2: Domain-modeled (flattened for analytics)
+      - S3: Unified model (multiple sources merged, not yet implemented)
     - **Gold**: Aggregated data products for reporting and analysis
     """)
     return
@@ -125,9 +128,7 @@ def _(Schema, con, get_table_names, mo):
 
 @app.cell
 def _(Schema, con, mo, table):
-    sample_df = con.sql(
-        f'SELECT * FROM {Schema.BRONZE}."{table.value}" LIMIT 10'
-    ).df()
+    sample_df = con.sql(f'SELECT * FROM {Schema.BRONZE}."{table.value}" LIMIT 10').df()
     mo.ui.table(sample_df, selection=None)
     return
 

@@ -5,7 +5,12 @@ from datetime import date
 import duckdb
 import polars as pl
 
-from src.common.models import OBSERVATION_SCHEMA, PATIENT_SCHEMA, Observation, Patient
+from src.common.models import (
+    OBSERVATION_SCHEMA,
+    PATIENT_SCHEMA,
+    Observation,
+    Patient,
+)
 from src.gold import build_observations_per_patient, save_observations_per_patient
 
 

@@ -1,4 +1,4 @@
-"""Validation rules for silver.observation data using Polars."""
+"""Validation rules for S2 observation data using Polars."""
 
 from __future__ import annotations
 
@@ -106,7 +106,7 @@ OBSERVATION_VALIDATION_RULES: list[ValidationRule] = [
 
 
 def validate_observation(silver_lf: Observation) -> Observation:
-    """Validate silver.observation and populate validation_errors column."""
+    """Validate S2 observation and populate validation_errors column."""
     error_exprs: list[pl.Expr] = []
     for rule in OBSERVATION_VALIDATION_RULES:
         error_exprs.append(

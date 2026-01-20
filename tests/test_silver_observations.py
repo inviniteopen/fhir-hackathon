@@ -1,6 +1,6 @@
 import polars as pl
 
-from src.silver.s1.observations import transform_observations
+from src.silver.s2.observations import transform_observations
 from src.validations.observations import validate_observation
 
 
