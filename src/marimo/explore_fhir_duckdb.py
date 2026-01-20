@@ -54,13 +54,8 @@ def _(mo):
 
 
 @app.cell
-def _(repo_root):
+def _(mo, repo_root):
     default_db_path = repo_root / "fhir.duckdb"
-    return (default_db_path,)
-
-
-@app.cell
-def _(default_db_path, mo):
     db_path = mo.ui.text(
         value=str(default_db_path),
         label="DuckDB database path",
@@ -113,28 +108,19 @@ def _(BRONZE_SCHEMA, con, mo):
             [BRONZE_SCHEMA],
         ).fetchall()
     ]
-    bronze_options = bronze_table_names
     table = mo.ui.dropdown(
-        options=bronze_options,
-        value=bronze_options[0] if bronze_options else None,
+        options=bronze_table_names,
+        value=bronze_table_names[0] if bronze_table_names else None,
         label="Table to sample",
     )
-    limit = mo.ui.slider(
-        start=1,
-        stop=200,
-        value=25,
-        step=1,
-        label="Rows",
-    )
-
-    mo.hstack([table, limit], justify="space-between", align="center")
-    return limit, table
+    table
+    return (table,)
 
 
 @app.cell
-def _(BRONZE_SCHEMA, con, limit, mo, table):
+def _(BRONZE_SCHEMA, con, mo, table):
     sample_df = con.sql(
-        f'SELECT * FROM {BRONZE_SCHEMA}."{table.value}" LIMIT {int(limit.value)}'
+        f'SELECT * FROM {BRONZE_SCHEMA}."{table.value}" LIMIT 10'
     ).df()
     mo.ui.table(sample_df, selection=None)
     return
