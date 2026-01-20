@@ -1,6 +1,7 @@
 """Transform bronze.patient to silver.patient with flattened fields using Polars."""
 
 from pathlib import Path
+from typing import Any
 
 import polars as pl
 
@@ -15,7 +16,7 @@ from src.common.models import PATIENT_SCHEMA, Patient
 from src.constants import SILVER_SCHEMA
 
 
-def transform_patient_row(row: dict) -> dict:
+def transform_patient_row(row: dict[str, Any]) -> dict[str, Any]:
     """Transform a single bronze patient row to silver format."""
     name_list = row.get("name")
     telecom_list = row.get("telecom")
