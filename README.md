@@ -1,6 +1,6 @@
 # Finnish Health Data Hackathon
 
-Invinite Oy participated to the [Finnish Health Data Hackathon](https://fhir.fi/hackathon/2026/finland) on January 2026. We explored how data-as-software methodology can be used for improving completeness and correctness of synthetic data. This project contains an ETL pipeline implemented with modern python based stack (`uv`, `polars`, `duckdb`, and `marimo`) that perfoms simple data validations. In addition, we demonstrate how non-obvious higher aggregation level properties of the data such as distributions can be tested and visualized from aggregated synthetic data.
+[Invinite Oy](https://www.invinite.fi/) participated to the [Finnish Health Data Hackathon](https://fhir.fi/hackathon/2026/finland) on January 2026. We explored how data-as-software methodology can be used for improving completeness and correctness of synthetic data. This project contains an ETL pipeline implemented with modern python based stack (`uv`, `polars`, `duckdb`, and `marimo`) that perfoms simple data validations. In addition, we demonstrate how non-obvious higher aggregation level properties of the data such as distributions can be tested and visualized from aggregated synthetic data.
 
 ## High level structure
 
