@@ -9,7 +9,7 @@ import duckdb
 import polars as pl
 
 from src.bronze import get_table_summary, load_bundles_to_tables
-from src.constants import BRONZE_SCHEMA, GOLD_SCHEMA, SILVER_SCHEMA
+from src.constants import Schema
 from src.gold import create_observations_per_patient
 from src.silver.s1.conditions import (
     get_condition_summary,
@@ -48,26 +48,26 @@ def save_silver_tables(
     observation_lf: pl.LazyFrame,
 ) -> None:
     """Save silver LazyFrames to DuckDB for debugging purposes."""
-    con.execute(f"CREATE SCHEMA IF NOT EXISTS {SILVER_SCHEMA}")
+    con.execute(f"CREATE SCHEMA IF NOT EXISTS {Schema.SILVER}")
 
     patient_df = patient_lf.collect()
     con.register("silver_patient_temp", patient_df.to_arrow())
     con.execute(
-        f"CREATE OR REPLACE TABLE {SILVER_SCHEMA}.patient AS SELECT * FROM silver_patient_temp"
+        f"CREATE OR REPLACE TABLE {Schema.SILVER}.patient AS SELECT * FROM silver_patient_temp"
     )
     con.unregister("silver_patient_temp")
 
     condition_df = condition_lf.collect()
     con.register("silver_condition_temp", condition_df.to_arrow())
     con.execute(
-        f"CREATE OR REPLACE TABLE {SILVER_SCHEMA}.condition AS SELECT * FROM silver_condition_temp"
+        f"CREATE OR REPLACE TABLE {Schema.SILVER}.condition AS SELECT * FROM silver_condition_temp"
     )
     con.unregister("silver_condition_temp")
 
     observation_df = observation_lf.collect()
     con.register("silver_observation_temp", observation_df.to_arrow())
     con.execute(
-        f"CREATE OR REPLACE TABLE {SILVER_SCHEMA}.observation AS SELECT * FROM silver_observation_temp"
+        f"CREATE OR REPLACE TABLE {Schema.SILVER}.observation AS SELECT * FROM silver_observation_temp"
     )
     con.unregister("silver_observation_temp")
 
@@ -118,18 +118,22 @@ def main() -> None:
     print("Transforming to silver layer...")
 
     # Patient transformation
-    bronze_patient_df = con.execute(f"SELECT * FROM {BRONZE_SCHEMA}.patient").pl()
+    bronze_patient_df = con.execute(
+        f"SELECT * FROM {Schema.BRONZE}.patient"
+    ).pl()
     silver_patient_lf = transform_patient(bronze_patient_df)
     validated_patient_lf = validate_patient(silver_patient_lf)
 
     # Condition transformation
-    bronze_condition_df = con.execute(f"SELECT * FROM {BRONZE_SCHEMA}.condition").pl()
+    bronze_condition_df = con.execute(
+        f"SELECT * FROM {Schema.BRONZE}.condition"
+    ).pl()
     silver_condition_lf = transform_condition(bronze_condition_df)
     validated_condition_lf = validate_condition(silver_condition_lf)
 
     # Observation transformation
     bronze_observation_df = con.execute(
-        f"SELECT * FROM {BRONZE_SCHEMA}.observation"
+        f"SELECT * FROM {Schema.BRONZE}.observation"
     ).pl()
     silver_observations_lf = transform_observations(bronze_observation_df)
     validated_observation_lf = validate_observation(silver_observations_lf)
@@ -145,6 +149,7 @@ def main() -> None:
         )
 
     # Build gold layer from silver LazyFrames
+
     print()
     print("Building gold layer...")
     create_observations_per_patient(
@@ -172,11 +177,11 @@ def main() -> None:
     print(f"  observation: {observation_summary['total_observations']}")
 
     gold_patients = con.execute(
-        f"SELECT COUNT(*) FROM {GOLD_SCHEMA}.observations_per_patient"
+        f"SELECT COUNT(*) FROM {Schema.GOLD}.observations_per_patient"
     ).fetchone()[0]
     print()
     print("Gold tables:")
-    print(f"  {GOLD_SCHEMA}.observations_per_patient: {gold_patients}")
+    print(f"  {Schema.GOLD}.observations_per_patient: {gold_patients}")
 
     print()
     print("Patient data quality:")

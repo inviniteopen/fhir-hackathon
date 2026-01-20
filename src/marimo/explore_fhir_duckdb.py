@@ -22,12 +22,10 @@ def _():
     import pandas as pd
 
     from src.bronze.loader import get_table_summary
-    from src.constants import BRONZE_SCHEMA, GOLD_SCHEMA, SILVER_SCHEMA
+    from src.constants import Schema
 
     return (
-        BRONZE_SCHEMA,
-        GOLD_SCHEMA,
-        SILVER_SCHEMA,
+        Schema,
         duckdb,
         get_table_summary,
         mo,
@@ -114,8 +112,8 @@ def _(con, get_table_summary, pd):
 
 
 @app.cell
-def _(BRONZE_SCHEMA, con, get_table_names, mo):
-    bronze_table_names = get_table_names(con, BRONZE_SCHEMA)
+def _(Schema, con, get_table_names, mo):
+    bronze_table_names = get_table_names(con, Schema.BRONZE)
     table = mo.ui.dropdown(
         options=bronze_table_names,
         value=bronze_table_names[0] if bronze_table_names else None,
@@ -126,15 +124,17 @@ def _(BRONZE_SCHEMA, con, get_table_names, mo):
 
 
 @app.cell
-def _(BRONZE_SCHEMA, con, mo, table):
-    sample_df = con.sql(f'SELECT * FROM {BRONZE_SCHEMA}."{table.value}" LIMIT 10').df()
+def _(Schema, con, mo, table):
+    sample_df = con.sql(
+        f'SELECT * FROM {Schema.BRONZE}."{table.value}" LIMIT 10'
+    ).df()
     mo.ui.table(sample_df, selection=None)
     return
 
 
 @app.cell
-def _(SILVER_SCHEMA, con, get_table_names, mo):
-    silver_table_names = get_table_names(con, SILVER_SCHEMA)
+def _(Schema, con, get_table_names, mo):
+    silver_table_names = get_table_names(con, Schema.SILVER)
     _has_silver = len(silver_table_names) > 0
 
     mo.md(f"""
@@ -148,7 +148,6 @@ def _(SILVER_SCHEMA, con, get_table_names, mo):
 @app.cell
 def _(mo, silver_table_names):
     mo.stop(len(silver_table_names) == 0)
-
     silver_table = mo.ui.dropdown(
         options=silver_table_names,
         value=silver_table_names[0] if silver_table_names else None,
@@ -159,11 +158,10 @@ def _(mo, silver_table_names):
 
 
 @app.cell
-def _(SILVER_SCHEMA, con, mo, silver_table, silver_table_names):
+def _(Schema, con, mo, silver_table, silver_table_names):
     mo.stop(len(silver_table_names) == 0)
-
     silver_sample_df = con.sql(
-        f'SELECT * FROM {SILVER_SCHEMA}."{silver_table.value}" LIMIT 10'
+        f'SELECT * FROM {Schema.SILVER}."{silver_table.value}" LIMIT 10'
     ).df()
     mo.ui.table(silver_sample_df, selection=None)
     return
@@ -178,8 +176,8 @@ def _(mo):
 
 
 @app.cell
-def _(GOLD_SCHEMA, con, get_table_names, mo):
-    gold_table_names = get_table_names(con, GOLD_SCHEMA)
+def _(Schema, con, get_table_names, mo):
+    gold_table_names = get_table_names(con, Schema.GOLD)
     gold_table = mo.ui.dropdown(
         options=gold_table_names,
         value=gold_table_names[0] if gold_table_names else None,
@@ -190,9 +188,9 @@ def _(GOLD_SCHEMA, con, get_table_names, mo):
 
 
 @app.cell
-def _(GOLD_SCHEMA, con, gold_table, mo):
+def _(Schema, con, gold_table, mo):
     gold_sample_df = con.sql(
-        f'SELECT * FROM {GOLD_SCHEMA}."{gold_table.value}" LIMIT 10'
+        f'SELECT * FROM {Schema.GOLD}."{gold_table.value}" LIMIT 10'
     ).df()
     mo.ui.table(gold_sample_df, selection=None)
     return
@@ -209,13 +207,13 @@ def _(mo):
 
 
 @app.cell
-def _(GOLD_SCHEMA, con, mo):
+def _(Schema, con, mo):
     import plotly.graph_objects as go
 
     df = con.sql(
         f"""
         SELECT patient_id, observation_count
-        FROM {GOLD_SCHEMA}.observations_per_patient
+        FROM {Schema.GOLD}.observations_per_patient
         ORDER BY observation_count DESC
         """
     ).df()

@@ -8,11 +8,11 @@ import duckdb
 import polars as pl
 
 from src.common.sql import qualified_table, quote_ident
-from src.constants import BRONZE_SCHEMA
+from src.constants import Schema
 
 
 def _ensure_bronze_schema(con: duckdb.DuckDBPyConnection) -> None:
-    con.execute(f"CREATE SCHEMA IF NOT EXISTS {quote_ident(BRONZE_SCHEMA)}")
+    con.execute(f"CREATE SCHEMA IF NOT EXISTS {quote_ident(Schema.BRONZE)}")
 
 
 def _collect_resources_by_type(
@@ -125,7 +125,7 @@ def _create_table(
     temp_name = f"_temp_{table_name}"
     con.register(temp_name, df.to_arrow())
     _ensure_bronze_schema(con)
-    bronze_table = qualified_table(BRONZE_SCHEMA, table_name)
+    bronze_table = qualified_table(Schema.BRONZE, table_name)
     con.execute(f"CREATE OR REPLACE TABLE {bronze_table} AS SELECT * FROM {temp_name}")
     legacy_table = qualified_table("main", table_name)
     con.execute(f"DROP TABLE IF EXISTS {legacy_table}")
@@ -142,12 +142,12 @@ def get_table_summary(con: duckdb.DuckDBPyConnection) -> dict[str, int]:
           AND table_type = 'BASE TABLE'
         ORDER BY table_name
         """,
-        [BRONZE_SCHEMA],
+        [Schema.BRONZE],
     ).fetchall()
     summary: dict[str, int] = {}
     for (table_name,) in table_names:
         count = con.execute(
-            f"SELECT COUNT(*) FROM {qualified_table(BRONZE_SCHEMA, table_name)}"
+            f"SELECT COUNT(*) FROM {qualified_table(Schema.BRONZE, table_name)}"
         ).fetchone()[0]
-        summary[f"{BRONZE_SCHEMA}.{table_name}"] = count
+        summary[f"{Schema.BRONZE}.{table_name}"] = count
     return summary

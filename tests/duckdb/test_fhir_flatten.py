@@ -11,9 +11,9 @@ import pyarrow as pa
 import pytest
 
 from src.bronze import get_table_summary, load_bundles_to_tables
+from src.constants import Schema
 
 DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data" / "EPS"
-BRONZE_SCHEMA = "bronze"
 
 
 def _create_table_from_resources(
@@ -22,9 +22,9 @@ def _create_table_from_resources(
     """Create a table from a list of resource dicts using PyArrow."""
     arrow_table = pa.Table.from_pylist(resources)
     con.register(f"_temp_{table_name}", arrow_table)
-    con.execute(f"CREATE SCHEMA IF NOT EXISTS {BRONZE_SCHEMA}")
+    con.execute(f"CREATE SCHEMA IF NOT EXISTS {Schema.BRONZE}")
     con.execute(
-        f"CREATE OR REPLACE TABLE {BRONZE_SCHEMA}.{table_name} "
+        f"CREATE OR REPLACE TABLE {Schema.BRONZE}.{table_name} "
         f"AS SELECT * FROM _temp_{table_name}"
     )
     con.unregister(f"_temp_{table_name}")
@@ -99,20 +99,20 @@ class TestFhirToTables:
             WHERE table_schema = ?
               AND table_type = 'BASE TABLE'
             """,
-            [BRONZE_SCHEMA],
+            [Schema.BRONZE],
         ).fetchdf()
         assert set(tables["table_name"]) == {"patient", "observation"}
 
         # Query patient table
         patients = con.execute(
-            f"SELECT id, _full_url FROM {BRONZE_SCHEMA}.patient"
+            f"SELECT id, _full_url FROM {Schema.BRONZE}.patient"
         ).fetchdf()
         assert len(patients) == 2
         assert set(patients["id"]) == {"patient-1", "patient-2"}
 
         # Query observation table
         observations = con.execute(
-            f"SELECT id, status FROM {BRONZE_SCHEMA}.observation"
+            f"SELECT id, status FROM {Schema.BRONZE}.observation"
         ).fetchdf()
         assert len(observations) == 1
         assert observations.iloc[0]["status"] == "final"
@@ -169,13 +169,13 @@ class TestFhirToTables:
             WHERE table_schema = ?
               AND table_type = 'BASE TABLE'
             """,
-            [BRONZE_SCHEMA],
+            [Schema.BRONZE],
         ).fetchdf()
         assert set(tables["table_name"]) == {"patient", "observation", "condition"}
 
         # Patient table has resources from both bundles
         patients = con.execute(
-            f"SELECT id, _source_bundle FROM {BRONZE_SCHEMA}.patient"
+            f"SELECT id, _source_bundle FROM {Schema.BRONZE}.patient"
         ).fetchdf()
         assert len(patients) == 2
         assert set(patients["_source_bundle"]) == {"bundle-1", "bundle-2"}
@@ -211,7 +211,7 @@ class TestFhirToTables:
 
         # Query nested data
         result = con.execute(
-            f"SELECT id, name, address FROM {BRONZE_SCHEMA}.patient"
+            f"SELECT id, name, address FROM {Schema.BRONZE}.patient"
         ).fetchdf()
         assert len(result) == 1
 
@@ -236,9 +236,9 @@ class TestRealEpsData:
         print(f"Total resources: {sum(summary.values())}")
 
         # Verify key tables exist
-        assert "bronze.patient" in summary
-        assert "bronze.observation" in summary
-        assert summary["bronze.patient"] == 50  # 50 bundles = 50 patients
+        assert f"{Schema.BRONZE}.patient" in summary
+        assert f"{Schema.BRONZE}.observation" in summary
+        assert summary[f"{Schema.BRONZE}.patient"] == 50  # 50 bundles = 50 patients
 
     def test_query_across_resource_tables(self):
         """Demonstrate querying across resource type tables."""
