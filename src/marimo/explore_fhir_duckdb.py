@@ -212,27 +212,25 @@ def _(mo):
         label="Observation count bin width",
     )
     obs_bin_width
-    return (obs_bin_width,)
+    return
 
 
 @app.cell
-def _(GOLD_SCHEMA, con, mo, obs_bin_width):
+def _(GOLD_SCHEMA, con, mo):
     import plotly.graph_objects as go
 
     df = con.sql(
         f"""
-        SELECT observation_count
+        SELECT patient_id, observation_count
         FROM {GOLD_SCHEMA}.observations_per_patient
+        ORDER BY observation_count DESC
         """
     ).df()
 
-    bin_w = int(obs_bin_width.value)
     fig = go.Figure(
         data=[
-            go.Histogram(
-                x=df["observation_count"],
-                xbins={"size": bin_w},
-                marker={"color": "#4C78A8"},
+            go.Bar(
+                y=df["observation_count"]
             )
         ]
     )
@@ -245,65 +243,19 @@ def _(GOLD_SCHEMA, con, mo, obs_bin_width):
     )
 
     mo.ui.plotly(fig)
-    return (go,)
+    return (df,)
 
 
 @app.cell
-def _(GOLD_SCHEMA, con, go, mo):
-    def _():
-        age_df = con.sql(
-            f"""
-            SELECT
-              FLOOR(patient_age_years / 5) * 5 AS age_bin_start,
-              COUNT(*) AS patients,
-              SUM(observation_count) AS observations
-            FROM {GOLD_SCHEMA}.observations_per_patient
-            WHERE patient_age_years IS NOT NULL
-            GROUP BY 1
-            ORDER BY 1
-            """
-        ).df()
+def _(df):
+    observation_counts = df["observation_count"]
+    first_20_percent = len(observation_counts) // 5
 
+    top_20_percet_observations = sum(observation_counts[:first_20_percent])
+    last_80_percent_observations = sum(observation_counts[first_20_percent:])
 
-        labels = [
-            f"{int(a)}-{int(a) + 4}" for a in age_df["age_bin_start"].tolist()
-        ]
-
-        patients_fig = go.Figure(
-            data=[
-                go.Bar(
-                    x=labels,
-                    y=age_df["patients"],
-                    marker={"color": "#F58518"},
-                )
-            ]
-        )
-        patients_fig.update_layout(
-            title="Patients by age range (5-year bins)",
-            xaxis_title="Age range (years)",
-            yaxis_title="Patients",
-            height=360,
-        )
-
-        observations_fig = go.Figure(
-            data=[
-                go.Bar(
-                    x=labels,
-                    y=age_df["observations"],
-                    marker={"color": "#54A24B"},
-                )
-            ]
-        )
-        observations_fig.update_layout(
-            title="Total observations by age range (5-year bins)",
-            xaxis_title="Age range (years)",
-            yaxis_title="Observations",
-            height=360,
-        )
-        return mo.vstack([mo.ui.plotly(patients_fig), mo.ui.plotly(observations_fig)])
-
-
-    _()
+    # Tests if most of the observations are caused by the 20 % most active patients
+    assert top_20_percet_observations > last_80_percent_observations, f"{top_20_percet_observations} > {last_80_percent_observations} not true"
     return
 
 
