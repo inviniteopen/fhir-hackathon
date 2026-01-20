@@ -7,19 +7,12 @@ from typing import Any
 import duckdb
 import polars as pl
 
+from src.common.sql import qualified_table, quote_ident
 from src.constants import BRONZE_SCHEMA
 
 
-def _quote_ident(ident: str) -> str:
-    return f'"{ident.replace('"', '""')}"'
-
-
-def _qualified_table(schema: str, table: str) -> str:
-    return f"{_quote_ident(schema)}.{_quote_ident(table)}"
-
-
 def _ensure_bronze_schema(con: duckdb.DuckDBPyConnection) -> None:
-    con.execute(f"CREATE SCHEMA IF NOT EXISTS {_quote_ident(BRONZE_SCHEMA)}")
+    con.execute(f"CREATE SCHEMA IF NOT EXISTS {quote_ident(BRONZE_SCHEMA)}")
 
 
 def _collect_resources_by_type(
@@ -132,9 +125,9 @@ def _create_table(
     temp_name = f"_temp_{table_name}"
     con.register(temp_name, df.to_arrow())
     _ensure_bronze_schema(con)
-    bronze_table = _qualified_table(BRONZE_SCHEMA, table_name)
+    bronze_table = qualified_table(BRONZE_SCHEMA, table_name)
     con.execute(f"CREATE OR REPLACE TABLE {bronze_table} AS SELECT * FROM {temp_name}")
-    legacy_table = _qualified_table("main", table_name)
+    legacy_table = qualified_table("main", table_name)
     con.execute(f"DROP TABLE IF EXISTS {legacy_table}")
     con.unregister(temp_name)
 
@@ -154,7 +147,7 @@ def get_table_summary(con: duckdb.DuckDBPyConnection) -> dict[str, int]:
     summary: dict[str, int] = {}
     for (table_name,) in table_names:
         count = con.execute(
-            f"SELECT COUNT(*) FROM {_qualified_table(BRONZE_SCHEMA, table_name)}"
+            f"SELECT COUNT(*) FROM {qualified_table(BRONZE_SCHEMA, table_name)}"
         ).fetchone()[0]
         summary[f"{BRONZE_SCHEMA}.{table_name}"] = count
     return summary

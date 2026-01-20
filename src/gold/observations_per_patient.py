@@ -6,19 +6,11 @@ from datetime import date
 
 import duckdb
 
+from src.common.sql import qualified_table, quote_ident
 from src.constants import GOLD_SCHEMA, SILVER_SCHEMA
 
-
-def _quote_ident(ident: str) -> str:
-    return f'"{ident.replace(chr(34), chr(34) * 2)}"'
-
-
-def _qualified_table(schema: str, table: str) -> str:
-    return f"{_quote_ident(schema)}.{_quote_ident(table)}"
-
-
 def _create_gold_schema(con: duckdb.DuckDBPyConnection) -> None:
-    con.execute(f"CREATE SCHEMA IF NOT EXISTS {_quote_ident(GOLD_SCHEMA)}")
+    con.execute(f"CREATE SCHEMA IF NOT EXISTS {quote_ident(GOLD_SCHEMA)}")
 
 
 def create_observations_per_patient(
@@ -34,9 +26,9 @@ def create_observations_per_patient(
     _create_gold_schema(con)
 
     as_of_sql = "CURRENT_DATE" if as_of is None else f"DATE '{as_of.isoformat()}'"
-    gold_table = _qualified_table(GOLD_SCHEMA, "observations_per_patient")
-    silver_patient = _qualified_table(SILVER_SCHEMA, "patient")
-    silver_observation = _qualified_table(SILVER_SCHEMA, "observation")
+    gold_table = qualified_table(GOLD_SCHEMA, "observations_per_patient")
+    silver_patient = qualified_table(SILVER_SCHEMA, "patient")
+    silver_observation = qualified_table(SILVER_SCHEMA, "observation")
 
     con.execute(
         f"""
