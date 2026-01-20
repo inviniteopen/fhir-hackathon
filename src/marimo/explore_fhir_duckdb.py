@@ -24,20 +24,18 @@ def _():
     import pandas as pd
     import polars as pl
 
-    from constants import BRONZE_SCHEMA, SILVER_SCHEMA
+    from constants import BRONZE_SCHEMA, GOLD_SCHEMA, SILVER_SCHEMA
     from fhir_loader import get_table_summary
     from transformations.patients import get_patient_summary
     from validations.patients import get_validation_report
     return (
         BRONZE_SCHEMA,
+        GOLD_SCHEMA,
         SILVER_SCHEMA,
         duckdb,
-        get_patient_summary,
         get_table_summary,
-        get_validation_report,
         mo,
         pd,
-        pl,
         repo_root,
     )
 
@@ -72,7 +70,7 @@ def _(db_path, duckdb):
 
 
 @app.cell
-def _(con, duckdb):
+def _(duckdb):
     def get_table_names(
         con: duckdb.DuckDBPyConnection, schema: str
     ) -> list[str]:
@@ -90,7 +88,6 @@ def _(con, duckdb):
                 params=[schema],
             ).fetchall()
         ]
-
     return (get_table_names,)
 
 
@@ -163,6 +160,35 @@ def _(SILVER_SCHEMA, con, mo, silver_table):
         f'SELECT * FROM {SILVER_SCHEMA}."{silver_table.value}" LIMIT 10'
     ).df()
     mo.ui.table(silver_sample_df, selection=None)
+    return
+
+
+@app.cell
+def _(mo):
+    mo.md("""
+    ## Gold Layer
+    """)
+    return
+
+
+@app.cell
+def _(GOLD_SCHEMA, con, get_table_names, mo):
+    gold_table_names = get_table_names(con, GOLD_SCHEMA)
+    gold_table = mo.ui.dropdown(
+        options=gold_table_names,
+        value=gold_table_names[0] if gold_table_names else None,
+        label="Table to sample",
+    )
+    gold_table
+    return (gold_table,)
+
+
+@app.cell
+def _(GOLD_SCHEMA, con, gold_table, mo):
+    gold_sample_df = con.sql(
+        f'SELECT * FROM {GOLD_SCHEMA}."{gold_table.value}" LIMIT 10'
+    ).df()
+    mo.ui.table(gold_sample_df, selection=None)
     return
 
 
