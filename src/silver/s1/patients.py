@@ -13,7 +13,7 @@ from src.common.fhir import (
     extract_telecom,
 )
 from src.common.models import PATIENT_SCHEMA, Patient
-from src.constants import SILVER_SCHEMA
+from src.constants import Schema
 
 
 def transform_patient_row(row: dict[str, Any]) -> dict[str, Any]:
@@ -91,15 +91,15 @@ def save_silver_patient(silver_lf: pl.LazyFrame, db_path: Path) -> int:
     silver_df = silver_lf.collect()
 
     con = duckdb.connect(str(db_path))
-    con.execute(f"CREATE SCHEMA IF NOT EXISTS {SILVER_SCHEMA}")
+    con.execute(f"CREATE SCHEMA IF NOT EXISTS {Schema.SILVER}")
     con.register("silver_patient_temp", silver_df.to_arrow())
     con.execute(
-        f"CREATE OR REPLACE TABLE {SILVER_SCHEMA}.patient AS SELECT * FROM silver_patient_temp"
+        f"CREATE OR REPLACE TABLE {Schema.SILVER}.patient AS SELECT * FROM silver_patient_temp"
     )
     con.unregister("silver_patient_temp")
-    row_count = con.execute(f"SELECT COUNT(*) FROM {SILVER_SCHEMA}.patient").fetchone()[
-        0
-    ]
+    row_count = con.execute(
+        f"SELECT COUNT(*) FROM {Schema.SILVER}.patient"
+    ).fetchone()[0]
     con.close()
 
     return row_count

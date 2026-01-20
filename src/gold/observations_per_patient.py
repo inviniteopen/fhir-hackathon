@@ -8,8 +8,8 @@ import duckdb
 import polars as pl
 
 from src.common.models import Observation, Patient
-from src.common.sql import quote_ident
-from src.constants import GOLD_SCHEMA
+from src.common.sql import qualified_table, quote_ident
+from src.constants import Schema
 
 
 def build_observations_per_patient(
@@ -77,17 +77,21 @@ def build_observations_per_patient(
     return result
 
 
+def _create_gold_schema(con: duckdb.DuckDBPyConnection) -> None:
+    con.execute(f"CREATE SCHEMA IF NOT EXISTS {quote_ident(Schema.GOLD)}")
+
+
 def save_observations_per_patient(
     con: duckdb.DuckDBPyConnection,
     gold_lf: pl.LazyFrame,
 ) -> None:
     """Save observations per patient LazyFrame to DuckDB gold schema."""
-    con.execute(f"CREATE SCHEMA IF NOT EXISTS {quote_ident(GOLD_SCHEMA)}")
+    _create_gold_schema(con)
 
     gold_df = gold_lf.collect()
     con.register("gold_observations_per_patient_temp", gold_df.to_arrow())
     con.execute(
-        f"CREATE OR REPLACE TABLE {quote_ident(GOLD_SCHEMA)}.observations_per_patient "
+        f"CREATE OR REPLACE TABLE {qualified_table(Schema.GOLD, 'observations_per_patient')} "
         "AS SELECT * FROM gold_observations_per_patient_temp"
     )
     con.unregister("gold_observations_per_patient_temp")
