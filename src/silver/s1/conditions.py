@@ -10,7 +10,7 @@ from src.common.fhir import (
 from src.common.models import CONDITION_SCHEMA, Condition
 
 
-def transform_condition_row(row: dict) -> dict:
+def transform_condition_row(row: dict[str, object]) -> dict[str, object]:
     """Transform a single bronze condition row to silver format."""
     # Extract subject (patient) reference
     subject = row.get("subject", {}) or {}
