@@ -3,7 +3,7 @@
 import marimo
 
 __generated_with = "0.19.4"
-app = marimo.App(width="full")
+app = marimo.App(width="medium")
 
 
 @app.cell
@@ -41,10 +41,9 @@ def _():
 @app.cell
 def _(mo):
     mo.md("""
-    # FHIR DuckDB exploration
+    # Synthetic data exploration
 
-    This notebook connects to a DuckDB database created by `main.py` and explores
-    both bronze (raw) and silver (transformed) FHIR data layers.
+    This notebooks allows exploring data in bronze, silver, and gold layers. In addition, it shows a simple visualtion of observation count per patient and performs test on the distributions to validate data quality.
     """)
     return
 
