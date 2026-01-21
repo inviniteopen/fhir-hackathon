@@ -291,32 +291,3 @@ def transform_observations(input_df: pl.DataFrame) -> Observation:
     silver_rows = [transform_observation_row(row) for row in input_df.to_dicts()]
     silver_lf = pl.DataFrame(silver_rows, schema=OBSERVATION_SCHEMA).lazy()
     return Observation.from_df(silver_lf, validate=False)
-
-
-def get_observation_summary(silver_lf: Observation | pl.LazyFrame) -> dict[str, int]:
-    """Get summary statistics for S2 observations.
-
-    Args:
-        silver_lf: S2 Observation LazyFrame
-
-    Returns:
-        Dictionary with counts for various observation attributes
-    """
-    return (
-        silver_lf.select(
-            pl.len().alias("total_observations"),
-            Observation.status.drop_nulls().len().alias("with_status"),
-            Observation.subject_reference.drop_nulls().len().alias("with_subject"),
-            Observation.code_code.drop_nulls().len().alias("with_code"),
-            Observation.effective_datetime.drop_nulls()
-            .len()
-            .alias("with_effective_datetime"),
-            (Observation.component_count > 0).sum().alias("with_components"),
-            Observation.value_type.drop_nulls().len().alias("with_value"),
-            (Observation.performer_references.list.len() > 0)
-            .sum()
-            .alias("with_performers"),
-        )
-        .collect()
-        .to_dicts()[0]
-    )

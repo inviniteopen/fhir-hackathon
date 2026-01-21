@@ -58,19 +58,3 @@ def transform_observations(bronze_df: pl.DataFrame) -> pl.LazyFrame:
         ),
     )
 
-
-def get_observation_summary(silver_lf: pl.LazyFrame) -> dict[str, int]:
-    """Get summary stats for S1 observations."""
-    return (
-        silver_lf.select(
-            pl.len().alias("total_observations"),
-            pl.col("status").drop_nulls().len().alias("with_status"),
-            pl.col("subject").drop_nulls().len().alias("with_subject"),
-            pl.col("code").drop_nulls().len().alias("with_code"),
-            pl.col("effectiveDateTime").drop_nulls().len().alias("with_effective"),
-            pl.col("valueQuantity").drop_nulls().len().alias("with_value_quantity"),
-            pl.col("component").drop_nulls().len().alias("with_components"),
-        )
-        .collect()
-        .to_dicts()[0]
-    )

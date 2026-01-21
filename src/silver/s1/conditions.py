@@ -51,18 +51,3 @@ def transform_condition(bronze_df: pl.DataFrame) -> pl.LazyFrame:
         ),
     )
 
-
-def get_condition_summary(silver_lf: pl.LazyFrame) -> dict[str, int]:
-    """Get summary stats for S1 conditions."""
-    return (
-        silver_lf.select(
-            pl.len().alias("total_conditions"),
-            pl.col("subject").drop_nulls().len().alias("with_subject"),
-            pl.col("code").drop_nulls().len().alias("with_code"),
-            pl.col("category").drop_nulls().len().alias("with_category"),
-            pl.col("onsetDateTime").drop_nulls().len().alias("with_onset"),
-            pl.col("clinicalStatus").drop_nulls().len().alias("with_clinical_status"),
-        )
-        .collect()
-        .to_dicts()[0]
-    )

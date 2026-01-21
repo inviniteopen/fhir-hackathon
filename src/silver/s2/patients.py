@@ -151,27 +151,3 @@ def transform_patient(bronze_df: pl.DataFrame) -> Patient:
     silver_rows = [transform_patient_row(row) for row in bronze_rows]
     return Patient.from_dicts(silver_rows, PATIENT_SCHEMA)
 
-
-def get_patient_summary(silver_lf: Patient | pl.LazyFrame) -> dict[str, int]:
-    """Get summary statistics for S2 patient data.
-
-    Args:
-        silver_lf: S2 Patient LazyFrame
-
-    Returns:
-        Dictionary with counts for various patient attributes
-    """
-    return (
-        silver_lf.select(
-            pl.len().alias("total_patients"),
-            Patient.family_name.drop_nulls().len().alias("with_family_name"),
-            Patient.given_names.drop_nulls().len().alias("with_given_names"),
-            Patient.birth_date.drop_nulls().len().alias("with_birth_date"),
-            Patient.gender.drop_nulls().len().alias("with_gender"),
-            Patient.phone.drop_nulls().len().alias("with_phone"),
-            Patient.city.drop_nulls().len().alias("with_city"),
-            Patient.nationality_code.drop_nulls().len().alias("with_nationality"),
-        )
-        .collect()
-        .to_dicts()[0]
-    )

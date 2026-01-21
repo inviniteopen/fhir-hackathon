@@ -173,25 +173,3 @@ def transform_condition(bronze_df: pl.DataFrame) -> Condition:
     )
     return Condition.from_df(silver_lf)
 
-
-def get_condition_summary(silver_lf: Condition | pl.LazyFrame) -> dict[str, int]:
-    """Get summary statistics for S2 condition data.
-
-    Args:
-        silver_lf: S2 Condition LazyFrame
-
-    Returns:
-        Dictionary with counts for various condition attributes
-    """
-    return (
-        silver_lf.select(
-            pl.len().alias("total_conditions"),
-            Condition.patient_id.drop_nulls().len().alias("with_patient_id"),
-            Condition.code.drop_nulls().len().alias("with_code"),
-            Condition.code_display.drop_nulls().len().alias("with_code_display"),
-            Condition.onset_date.drop_nulls().len().alias("with_onset_date"),
-            Condition.category_code.drop_nulls().len().alias("with_category"),
-        )
-        .collect()
-        .to_dicts()[0]
-    )

@@ -11,18 +11,14 @@ import polars as pl
 from src.bronze import get_table_summary, load_bundles_to_tables
 from src.constants import Schema
 from src.gold import create_observations_per_patient
-from src.silver.s2.conditions import (
+from src.reporting.s2_summaries import (
     get_condition_summary,
-    transform_condition,
-)
-from src.silver.s2.observations import (
     get_observation_summary,
-    transform_observations,
-)
-from src.silver.s2.patients import (
     get_patient_summary,
-    transform_patient,
 )
+from src.silver.s2.conditions import transform_condition
+from src.silver.s2.observations import transform_observations
+from src.silver.s2.patients import transform_patient
 from src.validations.conditions import (
     get_validation_report as get_condition_validation_report,
 )

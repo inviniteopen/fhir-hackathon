@@ -43,18 +43,3 @@ def transform_patient(bronze_df: pl.DataFrame) -> pl.LazyFrame:
         ),
     )
 
-
-def get_patient_summary(silver_lf: pl.LazyFrame) -> dict[str, int]:
-    """Get summary stats for S1 patients."""
-    return (
-        silver_lf.select(
-            pl.len().alias("total_patients"),
-            pl.col("name").drop_nulls().len().alias("with_name"),
-            pl.col("birthDate").drop_nulls().len().alias("with_birth_date"),
-            pl.col("gender").drop_nulls().len().alias("with_gender"),
-            pl.col("telecom").drop_nulls().len().alias("with_telecom"),
-            pl.col("address").drop_nulls().len().alias("with_address"),
-        )
-        .collect()
-        .to_dicts()[0]
-    )
