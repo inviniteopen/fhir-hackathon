@@ -11,6 +11,7 @@ import polars as pl
 
 from src.bronze import get_table_summary, load_bundles_to_tables
 from src.constants import Schema
+from src.db.duckdb_io import connect_db, count_rows, write_lazyframe
 from src.gold import create_observations_per_patient
 from src.reporting.etl_reporting import (
     print_bronze_summary,
@@ -35,28 +36,9 @@ def save_silver_tables(
     observation_lf: pl.LazyFrame,
 ) -> None:
     """Save silver LazyFrames to DuckDB for debugging purposes."""
-    con.execute(f"CREATE SCHEMA IF NOT EXISTS {Schema.SILVER}")
-
-    patient_df = patient_lf.collect()
-    con.register("silver_patient_temp", patient_df.to_arrow())
-    con.execute(
-        f"CREATE OR REPLACE TABLE {Schema.SILVER}.patient AS SELECT * FROM silver_patient_temp"
-    )
-    con.unregister("silver_patient_temp")
-
-    condition_df = condition_lf.collect()
-    con.register("silver_condition_temp", condition_df.to_arrow())
-    con.execute(
-        f"CREATE OR REPLACE TABLE {Schema.SILVER}.condition AS SELECT * FROM silver_condition_temp"
-    )
-    con.unregister("silver_condition_temp")
-
-    observation_df = observation_lf.collect()
-    con.register("silver_observation_temp", observation_df.to_arrow())
-    con.execute(
-        f"CREATE OR REPLACE TABLE {Schema.SILVER}.observation AS SELECT * FROM silver_observation_temp"
-    )
-    con.unregister("silver_observation_temp")
+    write_lazyframe(con, Schema.SILVER, "patient", patient_lf)
+    write_lazyframe(con, Schema.SILVER, "condition", condition_lf)
+    write_lazyframe(con, Schema.SILVER, "observation", observation_lf)
 
 
 def build_silver_frame(
@@ -98,7 +80,7 @@ def main() -> None:
         raise SystemExit(f"Input directory does not exist: {args.input}")
 
     # Load bundles to bronze layer
-    con = duckdb.connect(str(args.db))
+    con = connect_db(args.db)
     load_bundles_to_tables(args.input, con)
 
     # Print bronze summary
@@ -156,9 +138,11 @@ def main() -> None:
     # Print silver summary (computed from in-memory LazyFrames)
     print_silver_summary(patient_lf, condition_lf, observation_lf)
 
-    observations_per_patient = con.execute(
-        f"SELECT COUNT(*) FROM {Schema.GOLD}.observations_per_patient"
-    ).fetchone()[0]
+    observations_per_patient = count_rows(
+        con,
+        Schema.GOLD,
+        "observations_per_patient",
+    )
     print_gold_summary(Schema.GOLD, observations_per_patient)
 
     con.close()
