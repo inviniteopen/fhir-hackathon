@@ -31,10 +31,3 @@ def write_lazyframe(
         f"CREATE OR REPLACE TABLE {schema}.{table} AS SELECT * FROM {temp_name}"
     )
     con.unregister(temp_name)
-
-
-def count_rows(
-    con: duckdb.DuckDBPyConnection, schema: str, table: str
-) -> int:
-    """Count rows in a table."""
-    return con.execute(f"SELECT COUNT(*) FROM {schema}.{table}").fetchone()[0]
