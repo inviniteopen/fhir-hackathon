@@ -129,18 +129,6 @@ def validate_condition(model_lf: pl.LazyFrame) -> Condition:
     )
 
 
-def get_validation_summary(validated_lf: pl.LazyFrame) -> pl.DataFrame:
-    """Get summary of validation errors."""
-    return (
-        validated_lf.select(pl.col("validation_errors").list.explode().alias("error"))
-        .filter(pl.col("error").is_not_null())
-        .group_by("error")
-        .agg(pl.len().alias("count"))
-        .sort("count", descending=True)
-        .collect()
-    )
-
-
 def get_valid_conditions(validated_lf: pl.LazyFrame) -> Condition:
     """Filter to only valid conditions (no validation errors)."""
     return Condition.from_df(
@@ -159,21 +147,3 @@ def get_invalid_conditions(validated_lf: pl.LazyFrame) -> Condition:
         ),
         validate=False,
     )
-
-
-def get_validation_report(validated_lf: pl.LazyFrame) -> dict:
-    """Generate a validation report."""
-    df = validated_lf.collect()
-    total = len(df)
-    valid = df.filter(pl.col("validation_errors").list.len() == 0).height
-    invalid = total - valid
-
-    error_summary = get_validation_summary(validated_lf.lazy())
-
-    return {
-        "total_records": total,
-        "valid_records": valid,
-        "invalid_records": invalid,
-        "validity_rate": valid / total if total > 0 else 0.0,
-        "errors_by_rule": error_summary.to_dicts(),
-    }
