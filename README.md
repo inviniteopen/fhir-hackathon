@@ -67,7 +67,7 @@ This complements (rather than replaces) the traditional SQL-centric approach. SQ
 - **Testing and refactoring friction**, especially when “business rules” are encoded in long queries without the same unit-testing ergonomics.
 - **Limited IDE-aware tooling** compared to general-purpose programming languages (static typing, richer refactors, tighter integration with test runners).
 
-With DAS, you can still use SQL where it shines (for example, via DuckDB), but put the workflow under software engineering discipline: typed models (`fhir.resources`), explicit validation, and a test suite that continuously guards test data quality.
+With DAS, you can still use SQL where it shines (for example, via DuckDB), but put the workflow under software engineering discipline: typed models, explicit validation, and a test suite that continuously guards test data quality.
 
 ## Requirements
 
