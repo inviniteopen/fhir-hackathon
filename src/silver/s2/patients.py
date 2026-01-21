@@ -100,11 +100,11 @@ def extract_identifier_mr(identifier_list: list[dict] | None) -> str | None:
 
 
 # =============================================================================
-# Row transformation function
+# Row transformation function (internal)
 # =============================================================================
 
 
-def transform_patient_row(row: dict[str, Any]) -> dict[str, Any]:
+def _transform_row(row: dict[str, Any]) -> dict[str, Any]:
     """Transform a single bronze patient row to S2 domain model."""
     name_list = row.get("name")
     telecom_list = row.get("telecom")
@@ -134,20 +134,31 @@ def transform_patient_row(row: dict[str, Any]) -> dict[str, Any]:
 
 
 # =============================================================================
-# Public API: transform and get functions
+# Public API: get, transform
 # =============================================================================
 
 
-def transform_patient(bronze_df: pl.DataFrame) -> Patient:
-    """Transform bronze patient DataFrame to S2 domain model.
+def get_patient(source_df: pl.DataFrame) -> Patient:
+    """Get S2 patient by transforming source data.
 
     Args:
-        bronze_df: Bronze Patient DataFrame
+        source_df: Bronze Patient DataFrame
 
     Returns:
         Typed Patient LazyFrame with S2 domain model
     """
-    bronze_rows = bronze_df.to_dicts()
-    silver_rows = [transform_patient_row(row) for row in bronze_rows]
-    return Patient.from_dicts(silver_rows, PATIENT_SCHEMA)
+    return transform(source_df)
 
+
+def transform(source_df: pl.DataFrame) -> Patient:
+    """Transform source DataFrame to S2 patient model.
+
+    Args:
+        source_df: Bronze Patient DataFrame
+
+    Returns:
+        Typed Patient LazyFrame with S2 domain model
+    """
+    bronze_rows = source_df.to_dicts()
+    silver_rows = [_transform_row(row) for row in bronze_rows]
+    return Patient.from_dicts(silver_rows, PATIENT_SCHEMA)

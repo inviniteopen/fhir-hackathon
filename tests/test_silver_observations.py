@@ -1,10 +1,10 @@
 import polars as pl
 
-from src.silver.s2.observations import transform_observations
+from src.silver.s2.observations import get_observation
 from src.validations.observations import validate_observation
 
 
-def test_transform_observations_flattens_and_unnests() -> None:
+def test_get_observation_flattens_and_unnests() -> None:
     bronze_row = {
         "resourceType": "Observation",
         "id": "obs-1",
@@ -57,7 +57,7 @@ def test_transform_observations_flattens_and_unnests() -> None:
         ],
     }
 
-    obs = transform_observations(pl.DataFrame([bronze_row])).collect()
+    obs = get_observation(pl.DataFrame([bronze_row])).collect()
     assert obs.height == 1
     row = obs.row(0, named=True)
     assert row["id"] == "obs-1"
@@ -93,7 +93,7 @@ def test_validate_observation_populates_errors() -> None:
         "subject": None,
     }
 
-    silver = transform_observations(pl.DataFrame([bronze_row]))
+    silver = get_observation(pl.DataFrame([bronze_row]))
     validated = validate_observation(silver).collect()
     errors = validated.item(0, "validation_errors")
     assert "status_valid" in errors

@@ -229,11 +229,11 @@ def extract_components(component_list: list[dict[str, Any]]) -> list[dict[str, A
 
 
 # =============================================================================
-# Row transformation function
+# Row transformation function (internal)
 # =============================================================================
 
 
-def transform_observation_row(row: dict[str, Any]) -> dict[str, Any]:
+def _transform_row(row: dict[str, Any]) -> dict[str, Any]:
     """Transform one bronze/S1 Observation row into a domain-modeled S2 row."""
     code_obj = row.get("code")
     category_list = iter_dict_list(row.get("category"))
@@ -275,19 +275,31 @@ def transform_observation_row(row: dict[str, Any]) -> dict[str, Any]:
 
 
 # =============================================================================
-# Public API: transform and get functions
+# Public API: get, transform
 # =============================================================================
 
 
-def transform_observations(input_df: pl.DataFrame) -> Observation:
-    """Transform observations from bronze/S1 to S2 domain model.
+def get_observation(source_df: pl.DataFrame) -> Observation:
+    """Get S2 observation by transforming source data.
 
     Args:
-        input_df: Bronze or S1 observations DataFrame
+        source_df: Bronze or S1 observations DataFrame
 
     Returns:
         Typed Observation LazyFrame with S2 domain model
     """
-    silver_rows = [transform_observation_row(row) for row in input_df.to_dicts()]
+    return transform(source_df)
+
+
+def transform(source_df: pl.DataFrame) -> Observation:
+    """Transform source DataFrame to S2 observation model.
+
+    Args:
+        source_df: Bronze or S1 observations DataFrame
+
+    Returns:
+        Typed Observation LazyFrame with S2 domain model
+    """
+    silver_rows = [_transform_row(row) for row in source_df.to_dicts()]
     silver_lf = pl.DataFrame(silver_rows, schema=OBSERVATION_SCHEMA).lazy()
     return Observation.from_df(silver_lf, validate=False)

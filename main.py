@@ -16,9 +16,9 @@ from src.reporting.s2_summaries import (
     get_observation_summary,
     get_patient_summary,
 )
-from src.silver.s2.conditions import transform_condition
-from src.silver.s2.observations import transform_observations
-from src.silver.s2.patients import transform_patient
+from src.silver.s2.conditions import get_condition
+from src.silver.s2.observations import get_observation
+from src.silver.s2.patients import get_patient
 from src.validations.conditions import (
     get_validation_report as get_condition_validation_report,
 )
@@ -115,19 +115,19 @@ def main() -> None:
 
     # Patient transformation
     bronze_patient_df = con.execute(f"SELECT * FROM {Schema.BRONZE}.patient").pl()
-    silver_patient_lf = transform_patient(bronze_patient_df)
+    silver_patient_lf = get_patient(bronze_patient_df)
     validated_patient_lf = validate_patient(silver_patient_lf)
 
     # Condition transformation
     bronze_condition_df = con.execute(f"SELECT * FROM {Schema.BRONZE}.condition").pl()
-    silver_condition_lf = transform_condition(bronze_condition_df)
+    silver_condition_lf = get_condition(bronze_condition_df)
     validated_condition_lf = validate_condition(silver_condition_lf)
 
     # Observation transformation
     bronze_observation_df = con.execute(
         f"SELECT * FROM {Schema.BRONZE}.observation"
     ).pl()
-    silver_observations_lf = transform_observations(bronze_observation_df)
+    silver_observations_lf = get_observation(bronze_observation_df)
     validated_observation_lf = validate_observation(silver_observations_lf)
 
     # Optionally save silver tables for debugging
