@@ -4,6 +4,8 @@ _January 19, 2026_
 
 Last weekend, [Invinite](https://www.invinite.fi/) participated in the [Finnish Health Data Hackathon](https://fhir.fi/hackathon/2026/finland). We joined the [Care Plans track focused on testing](https://fhir.fi/hackathon/2026/finland/care-plans#testing), where we explored whether a **Data as Software (DAS)** approach could be used for testing and validating synthetic FHIR data—both structurally and in terms of how realistic the data is.
 
+The core idea behind DAS is simple: data engineering doesn't have to be different from software engineering. The same practices that make code maintainable: types, tests, code review, CI/CD—apply directly to data transformations. It's not about replacing SQL or abandoning existing tools, but about wrapping data work in the engineering discipline that software teams take for granted.
+
 ![Eetu Sutinen and Tommi Summanen at the Finnish Health Data Hackathon](.assets/hackathon.png)
 _Eetu Sutinen and Tommi Summanen representing Invinite at the hackathon_
 
