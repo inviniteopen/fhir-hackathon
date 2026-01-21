@@ -11,7 +11,9 @@ from src.common.models import (
     Observation,
     Patient,
 )
-from src.gold import build_observations_per_patient, save_observations_per_patient
+from src.constants import Schema
+from src.db.duckdb_io import write_lazyframe
+from src.gold import build_observations_per_patient
 
 
 def test_build_observations_per_patient_counts_and_age() -> None:
@@ -91,7 +93,7 @@ def test_save_observations_per_patient_to_db() -> None:
     gold_lf = gold_df.lazy()
 
     # Save to DB
-    save_observations_per_patient(con, gold_lf)
+    write_lazyframe(con, Schema.GOLD, "observations_per_patient", gold_lf)
 
     # Verify
     rows = con.execute(
