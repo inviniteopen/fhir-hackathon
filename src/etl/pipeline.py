@@ -6,9 +6,10 @@ from typing import Callable
 import duckdb
 import polars as pl
 
-from src.bronze import get_bronze_table_summary, load_bronze_bundles_to_tables
+from src.bronze import load_bronze_bundles
 from src.common.models import Condition, Observation, Patient
 from src.constants import Schema
+from src.db.duckdb_io import drop_table_if_exists, get_table_summary, write_dataframes
 from src.gold import build_observations_per_patient
 from src.silver.models.conditions import get_condition as get_condition_model
 from src.silver.models.observations import get_observation as get_observation_model
@@ -20,8 +21,11 @@ from src.silver.sources.patients import get_patient as get_patient_source
 
 def run_bronze(bundle_dir: Path, con: duckdb.DuckDBPyConnection) -> dict[str, int]:
     """Load bronze tables and return a summary."""
-    load_bronze_bundles_to_tables(bundle_dir, con)
-    return get_bronze_table_summary(con)
+    frames = load_bronze_bundles(bundle_dir)
+    write_dataframes(con, Schema.BRONZE, frames)
+    for table in frames:
+        drop_table_if_exists(con, "main", table)
+    return get_table_summary(con, Schema.BRONZE)
 
 
 def _build_silver_frame(

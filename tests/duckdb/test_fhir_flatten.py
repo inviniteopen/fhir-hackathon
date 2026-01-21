@@ -10,8 +10,9 @@ import duckdb
 import pyarrow as pa
 import pytest
 
-from src.bronze import get_bronze_table_summary, load_bronze_bundles_to_tables
+from src.bronze import load_bronze_bundles
 from src.constants import Schema
+from src.db.duckdb_io import get_table_summary, write_dataframes
 
 DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data" / "EPS"
 
@@ -227,11 +228,13 @@ class TestRealEpsData:
     """Test with real European Patient Summary data."""
 
     def test_load_bronze_bundles_to_tables_function(self):
-        """Test the load_bronze_bundles_to_tables function from src.fhir_loader."""
-        con = load_bronze_bundles_to_tables(DATA_DIR)
+        """Test the load_bronze_bundles function from src.bronze.loader."""
+        frames = load_bronze_bundles(DATA_DIR)
+        con = duckdb.connect(":memory:")
+        write_dataframes(con, Schema.BRONZE, frames)
 
         # Verify tables created
-        summary = get_bronze_table_summary(con)
+        summary = get_table_summary(con, Schema.BRONZE)
         print(f"\nTables created: {list(summary.keys())}")
         print(f"Total resources: {sum(summary.values())}")
 
@@ -242,7 +245,9 @@ class TestRealEpsData:
 
     def test_query_across_resource_tables(self):
         """Demonstrate querying across resource type tables."""
-        con = load_bronze_bundles_to_tables(DATA_DIR)
+        frames = load_bronze_bundles(DATA_DIR)
+        con = duckdb.connect(":memory:")
+        write_dataframes(con, Schema.BRONZE, frames)
 
         # Example queries
 
@@ -257,7 +262,7 @@ class TestRealEpsData:
         print(f"\nObservations per bundle (top 5):\n{obs_per_bundle.to_string()}")
 
         # 2. Resource type distribution
-        summary = get_bronze_table_summary(con)
+        summary = get_table_summary(con, Schema.BRONZE)
         print("\nResource distribution:")
         for table_name, count in summary.items():
             print(f"  {table_name}: {count}")
