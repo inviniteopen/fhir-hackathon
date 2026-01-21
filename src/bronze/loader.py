@@ -51,7 +51,7 @@ def _annotate_resource(
     }
 
 
-def load_bundles_to_tables(
+def load_bronze_bundles_to_tables(
     bundle_dir: Path,
     con: duckdb.DuckDBPyConnection | None = None,
 ) -> duckdb.DuckDBPyConnection:
@@ -89,7 +89,7 @@ def load_bundles_to_tables(
     return con
 
 
-def load_bundle_file(
+def load_bronze_bundle_file(
     bundle_path: Path,
     con: duckdb.DuckDBPyConnection | None = None,
 ) -> duckdb.DuckDBPyConnection:
@@ -132,7 +132,7 @@ def _create_table(
     con.unregister(temp_name)
 
 
-def get_table_summary(con: duckdb.DuckDBPyConnection) -> dict[str, int]:
+def get_bronze_table_summary(con: duckdb.DuckDBPyConnection) -> dict[str, int]:
     """Get row counts for all tables in the connection."""
     table_names = con.execute(
         """
@@ -151,3 +151,4 @@ def get_table_summary(con: duckdb.DuckDBPyConnection) -> dict[str, int]:
         ).fetchone()[0]
         summary[f"{Schema.BRONZE}.{table_name}"] = count
     return summary
+
