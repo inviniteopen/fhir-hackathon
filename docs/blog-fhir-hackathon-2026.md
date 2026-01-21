@@ -2,9 +2,11 @@
 
 _January 19, 2026_
 
-Last weekend, [Invinite](https://www.invinite.fi/) participated in the [Finnish Health Data Hackathon](https://fhir.fi/hackathon/2026/finland). We joined the [Care Plans track focused on testing](https://fhir.fi/hackathon/2026/finland/care-plans#testing), where we explored whether a **Data as Software (DAS)** approach could be used for testing and validating synthetic FHIR data—both structurally and in terms of how realistic the data is.
+Last weekend, [Invinite](https://www.invinite.fi/) participated in the [Finnish Health Data Hackathon](https://fhir.fi/hackathon/2026/finland). We joined the [Care Plans track focused on testing](https://fhir.fi/hackathon/2026/finland/care-plans#testing), where we explored whether a **Data as Software (DaS)** approach could be used for testing and validating synthetic FHIR data—both structurally and in terms of how realistic the data is.
 
-The core idea behind DAS is simple: data engineering doesn't have to be different from software engineering. The same practices that make code maintainable: types, tests, code review, CI/CD—apply directly to data transformations. It's not about replacing SQL or abandoning existing tools, but about wrapping data work in the engineering discipline that software teams take for granted.
+The core idea behind DaS is simple: data engineering doesn't have to be different from software engineering. The same practices that make code maintainable: types, tests, code review, CI/CD—apply directly to data transformations. It's not about replacing SQL or abandoning existing tools, but about wrapping data work in the engineering discipline that software teams take for granted.
+
+We’ve already used DaS successfully in Lakehouse projects with Finnish wellbeing counties, where it has helped us get reliable pipelines into production. That’s why we wanted to try the same approach for building a validation pipeline for synthetic data.
 
 ![Eetu Sutinen and Tommi Summanen at the Finnish Health Data Hackathon](.assets/hackathon.png)
 _Eetu Sutinen and Tommi Summanen representing Invinite at the hackathon_
@@ -19,7 +21,7 @@ _Eetu Sutinen and Tommi Summanen representing Invinite at the hackathon_
 
 We follow the medallion architecture (bronze → silver → gold), but with an important design decision: **only bronze and gold persist to disk**.
 
-![DAS Medallion Architecture](.assets/das-medallion.png)
+![DaS Medallion Architecture](.assets/das-medallion.png)
 
 Silver runs in-memory because:
 
@@ -62,7 +64,7 @@ For properties that are hard to express as unit tests—like distribution shapes
 
 Healthcare software development faces a data paradox: you need realistic test data to build quality software, but real patient data requires strict access controls. Synthetic data bridges this gap, but only if it's actually representative.
 
-DAS methodology provides:
+DaS methodology provides:
 
 1. **Auditable quality** - every validation rule is version-controlled and testable
 2. **Reproducible pipelines** - same code runs anywhere (laptop, CI, cloud)
@@ -82,4 +84,4 @@ Data as Software isn't about replacing SQL or abandoning existing tools. It's ab
 
 ---
 
-_We're always interested in discussing Data as Software approaches. [Let's talk](https://www.invinite.fi/contact)._
+_nterested in Data as Software and modern data engineering in healthcare? We’d love to connect! [Let's talk](https://www.invinite.fi/contact)._

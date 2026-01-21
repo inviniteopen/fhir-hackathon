@@ -18,11 +18,11 @@ Documentation: Use Context7 with library ID `/pydantic/pydantic` to query curren
 - Type hints required
 - Use `Path` from `pathlib` for file operations
 
-## DAS (Data as Software)
+## DaS (Data as Software)
 
 The `das/` module provides typed dataframe abstractions. Use it when working with parsed FHIR data in dataframes.
 
-### When to use DAS
+### When to use DaS
 
 - Loading FHIR resources into dataframes for analysis
 - Performing aggregations, filtering, or transformations on FHIR data

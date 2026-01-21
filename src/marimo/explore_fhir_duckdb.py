@@ -41,7 +41,7 @@ def _(mo):
 
     This notebook explores data across the medallion architecture layers.
 
-    **DAS storage policy:** Only raw data (bronze) and reporting data (gold) are persisted.
+    **DaS storage policy:** Only raw data (bronze) and reporting data (gold) are persisted.
     Silver layer transformations run in-memory to avoid exposing intermediate structures
     and to allow flexible refactoring without migrations.
 
