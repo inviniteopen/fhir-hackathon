@@ -47,9 +47,9 @@ def _(mo):
 
     - **Bronze**: Raw FHIR resources as parsed from source files
     - **Silver**: Progressively refined data:
-      - S1: Cleaned bronze (same structure as source)
-      - S2: Domain-modeled (flattened for analytics)
-      - S3: Unified model (multiple sources merged, not yet implemented)
+      - sources: Cleaned bronze (same structure as source)
+      - models: Domain-modeled (flattened for analytics)
+      - domains: Unified model (multiple sources merged, not yet implemented)
     - **Gold**: Aggregated data products for reporting and analysis
     """)
     return

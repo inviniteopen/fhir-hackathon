@@ -1,13 +1,16 @@
-"""S2 Patient: Domain-modeled from FHIR source.
+"""Patient model: Domain-modeled from sources.
 
-S2 transforms FHIR Patient toward a domain-specific analytical model:
+Transforms sources Patient toward a domain-specific analytical model:
 - Flattens nested structures (name[] → family_name, given_names, etc.)
 - Extracts primary values from complex types (telecom → phone)
 - Normalizes addresses and identifiers
 - Prepares data for domain-level analytics
 
+Input: Sources Patient LazyFrame (cleaned bronze with source metadata)
+Output: Typed Patient LazyFrame with flattened domain model
+
 This is source-specific modeling - it knows about FHIR structures but transforms
-them toward common domain concepts. For unified multi-source models, see S3.
+them toward common domain concepts. For unified multi-source models, see domains.
 """
 
 from typing import Any
@@ -105,7 +108,7 @@ def extract_identifier_mr(identifier_list: list[dict] | None) -> str | None:
 
 
 def _transform_row(row: dict[str, Any]) -> dict[str, Any]:
-    """Transform a single bronze patient row to S2 domain model."""
+    """Transform a single sources patient row to domain model."""
     name_list = row.get("name")
     telecom_list = row.get("telecom")
     address_list = row.get("address")
@@ -114,8 +117,8 @@ def _transform_row(row: dict[str, Any]) -> dict[str, Any]:
 
     return {
         "id": row.get("id"),
-        "source_file": row.get("_source_file"),
-        "source_bundle": row.get("_source_bundle"),
+        "source_file": row.get("source_file"),
+        "source_bundle": row.get("source_bundle"),
         "family_name": extract_family_name(name_list),
         "given_names": extract_given_names(name_list),
         "full_name": extract_full_name(name_list),
@@ -138,27 +141,27 @@ def _transform_row(row: dict[str, Any]) -> dict[str, Any]:
 # =============================================================================
 
 
-def get_patient(source_df: pl.DataFrame) -> Patient:
-    """Get S2 patient by transforming source data.
+def get_patient(sources_lf: pl.LazyFrame) -> Patient:
+    """Get patient model by transforming sources data.
 
     Args:
-        source_df: Bronze Patient DataFrame
+        sources_lf: Sources Patient LazyFrame (from silver.sources.patients.transform_patient)
 
     Returns:
-        Typed Patient LazyFrame with S2 domain model
+        Typed Patient LazyFrame with domain model
     """
-    return transform(source_df)
+    return transform(sources_lf)
 
 
-def transform(source_df: pl.DataFrame) -> Patient:
-    """Transform source DataFrame to S2 patient model.
+def transform(sources_lf: pl.LazyFrame) -> Patient:
+    """Transform sources LazyFrame to patient domain model.
 
     Args:
-        source_df: Bronze Patient DataFrame
+        sources_lf: Sources Patient LazyFrame (from silver.sources.patients.transform_patient)
 
     Returns:
-        Typed Patient LazyFrame with S2 domain model
+        Typed Patient LazyFrame with domain model
     """
-    bronze_rows = source_df.to_dicts()
-    silver_rows = [_transform_row(row) for row in bronze_rows]
-    return Patient.from_dicts(silver_rows, PATIENT_SCHEMA)
+    sources_rows = sources_lf.collect().to_dicts()
+    model_rows = [_transform_row(row) for row in sources_rows]
+    return Patient.from_dicts(model_rows, PATIENT_SCHEMA)

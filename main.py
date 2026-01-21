@@ -11,14 +11,17 @@ import polars as pl
 from src.bronze import get_table_summary, load_bundles_to_tables
 from src.constants import Schema
 from src.gold import create_observations_per_patient
-from src.reporting.s2_summaries import (
+from src.reporting.models_summaries import (
     get_condition_summary,
     get_observation_summary,
     get_patient_summary,
 )
-from src.silver.s2.conditions import get_condition
-from src.silver.s2.observations import get_observation
-from src.silver.s2.patients import get_patient
+from src.silver.models.conditions import get_condition as get_condition_model
+from src.silver.models.observations import get_observation as get_observation_model
+from src.silver.models.patients import get_patient as get_patient_model
+from src.silver.sources.conditions import get_condition as get_condition_source
+from src.silver.sources.observations import get_observation as get_observation_source
+from src.silver.sources.patients import get_patient as get_patient_source
 from src.validations.conditions import (
     get_validation_report as get_condition_validation_report,
 )
@@ -109,26 +112,29 @@ def main() -> None:
     for table_name, count in summary.items():
         print(f"  {table_name}: {count}")
 
-    # Transform bronze to silver (in-memory only by default)
+    # Transform bronze → sources → models (in-memory only by default)
     print()
     print("Transforming to silver layer...")
 
-    # Patient transformation
+    # Patient transformation: bronze → sources → models
     bronze_patient_df = con.execute(f"SELECT * FROM {Schema.BRONZE}.patient").pl()
-    silver_patient_lf = get_patient(bronze_patient_df)
-    validated_patient_lf = validate_patient(silver_patient_lf)
+    sources_patient_lf = get_patient_source(bronze_patient_df)
+    models_patient_lf = get_patient_model(sources_patient_lf)
+    validated_patient_lf = validate_patient(models_patient_lf)
 
-    # Condition transformation
+    # Condition transformation: bronze → sources → models
     bronze_condition_df = con.execute(f"SELECT * FROM {Schema.BRONZE}.condition").pl()
-    silver_condition_lf = get_condition(bronze_condition_df)
-    validated_condition_lf = validate_condition(silver_condition_lf)
+    sources_condition_lf = get_condition_source(bronze_condition_df)
+    models_condition_lf = get_condition_model(sources_condition_lf)
+    validated_condition_lf = validate_condition(models_condition_lf)
 
-    # Observation transformation
+    # Observation transformation: bronze → sources → models
     bronze_observation_df = con.execute(
         f"SELECT * FROM {Schema.BRONZE}.observation"
     ).pl()
-    silver_observations_lf = get_observation(bronze_observation_df)
-    validated_observation_lf = validate_observation(silver_observations_lf)
+    sources_observation_lf = get_observation_source(bronze_observation_df)
+    models_observation_lf = get_observation_model(sources_observation_lf)
+    validated_observation_lf = validate_observation(models_observation_lf)
 
     # Optionally save silver tables for debugging
     if args.debug:

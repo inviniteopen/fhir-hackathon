@@ -1,4 +1,4 @@
-"""Summary helpers for Silver S2 dataframes."""
+"""Summary helpers for Silver models dataframes."""
 
 from __future__ import annotations
 
@@ -7,10 +7,10 @@ import polars as pl
 from src.common.models import Condition, Observation, Patient
 
 
-def get_patient_summary(silver_lf: Patient | pl.LazyFrame) -> dict[str, int]:
-    """Get summary statistics for S2 patient data."""
+def get_patient_summary(models_lf: Patient | pl.LazyFrame) -> dict[str, int]:
+    """Get summary statistics for patient model data."""
     return (
-        silver_lf.select(
+        models_lf.select(
             pl.len().alias("total_patients"),
             Patient.family_name.drop_nulls().len().alias("with_family_name"),
             Patient.given_names.drop_nulls().len().alias("with_given_names"),
@@ -25,10 +25,10 @@ def get_patient_summary(silver_lf: Patient | pl.LazyFrame) -> dict[str, int]:
     )
 
 
-def get_condition_summary(silver_lf: Condition | pl.LazyFrame) -> dict[str, int]:
-    """Get summary statistics for S2 condition data."""
+def get_condition_summary(models_lf: Condition | pl.LazyFrame) -> dict[str, int]:
+    """Get summary statistics for condition model data."""
     return (
-        silver_lf.select(
+        models_lf.select(
             pl.len().alias("total_conditions"),
             Condition.patient_id.drop_nulls().len().alias("with_patient_id"),
             Condition.code.drop_nulls().len().alias("with_code"),
@@ -42,11 +42,11 @@ def get_condition_summary(silver_lf: Condition | pl.LazyFrame) -> dict[str, int]
 
 
 def get_observation_summary(
-    silver_lf: Observation | pl.LazyFrame,
+    models_lf: Observation | pl.LazyFrame,
 ) -> dict[str, int]:
-    """Get summary statistics for S2 observations."""
+    """Get summary statistics for observation model data."""
     return (
-        silver_lf.select(
+        models_lf.select(
             pl.len().alias("total_observations"),
             Observation.status.drop_nulls().len().alias("with_status"),
             Observation.subject_reference.drop_nulls().len().alias("with_subject"),

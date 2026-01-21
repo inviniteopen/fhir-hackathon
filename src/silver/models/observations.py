@@ -1,13 +1,16 @@
-"""S2 Observation: Domain-modeled from FHIR source.
+"""Observation model: Domain-modeled from sources.
 
-S2 transforms FHIR Observations toward a domain-specific analytical model:
+Transforms sources Observations toward a domain-specific analytical model:
 - Flattens nested structures (code.coding → code_system, code_code, etc.)
 - Extracts primary values from polymorphic value[x] fields
 - Normalizes references (subject.reference → subject_id)
 - Prepares data for domain-level analytics
 
+Input: Sources Observation LazyFrame (cleaned bronze with source metadata)
+Output: Typed Observation LazyFrame with flattened domain model
+
 This is source-specific modeling - it knows about FHIR structures but transforms
-them toward common domain concepts. For unified multi-source models, see S3.
+them toward common domain concepts. For unified multi-source models, see domains.
 """
 
 from typing import Any
@@ -102,13 +105,13 @@ def extract_subject_id(subject: dict[str, Any] | None) -> str | None:
 
 
 def extract_source_file(row: dict[str, Any]) -> str | None:
-    """Extract source file from row, handling both S1 and bronze formats."""
-    return row.get("source_file") or row.get("_source_file")
+    """Extract source file from sources row."""
+    return row.get("source_file")
 
 
 def extract_source_bundle(row: dict[str, Any]) -> str | None:
-    """Extract source bundle from row, handling both S1 and bronze formats."""
-    return row.get("source_bundle") or row.get("_source_bundle")
+    """Extract source bundle from sources row."""
+    return row.get("source_bundle")
 
 
 # =============================================================================
@@ -234,7 +237,7 @@ def extract_components(component_list: list[dict[str, Any]]) -> list[dict[str, A
 
 
 def _transform_row(row: dict[str, Any]) -> dict[str, Any]:
-    """Transform one bronze/S1 Observation row into a domain-modeled S2 row."""
+    """Transform one sources Observation row into a domain-modeled row."""
     code_obj = row.get("code")
     category_list = iter_dict_list(row.get("category"))
     performer_list = iter_dict_list(row.get("performer"))
@@ -279,27 +282,28 @@ def _transform_row(row: dict[str, Any]) -> dict[str, Any]:
 # =============================================================================
 
 
-def get_observation(source_df: pl.DataFrame) -> Observation:
-    """Get S2 observation by transforming source data.
+def get_observation(sources_lf: pl.LazyFrame) -> Observation:
+    """Get observation model by transforming sources data.
 
     Args:
-        source_df: Bronze or S1 observations DataFrame
+        sources_lf: Sources Observation LazyFrame (from silver.sources.observations.transform_observations)
 
     Returns:
-        Typed Observation LazyFrame with S2 domain model
+        Typed Observation LazyFrame with domain model
     """
-    return transform(source_df)
+    return transform(sources_lf)
 
 
-def transform(source_df: pl.DataFrame) -> Observation:
-    """Transform source DataFrame to S2 observation model.
+def transform(sources_lf: pl.LazyFrame) -> Observation:
+    """Transform sources LazyFrame to observation domain model.
 
     Args:
-        source_df: Bronze or S1 observations DataFrame
+        sources_lf: Sources Observation LazyFrame (from silver.sources.observations.transform_observations)
 
     Returns:
-        Typed Observation LazyFrame with S2 domain model
+        Typed Observation LazyFrame with domain model
     """
-    silver_rows = [_transform_row(row) for row in source_df.to_dicts()]
-    silver_lf = pl.DataFrame(silver_rows, schema=OBSERVATION_SCHEMA).lazy()
-    return Observation.from_df(silver_lf, validate=False)
+    sources_rows = sources_lf.collect().to_dicts()
+    model_rows = [_transform_row(row) for row in sources_rows]
+    model_lf = pl.DataFrame(model_rows, schema=OBSERVATION_SCHEMA).lazy()
+    return Observation.from_df(model_lf, validate=False)

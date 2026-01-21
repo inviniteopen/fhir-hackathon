@@ -1,14 +1,14 @@
-"""Summary helpers for Silver S1 dataframes."""
+"""Summary helpers for Silver sources dataframes."""
 
 from __future__ import annotations
 
 import polars as pl
 
 
-def get_patient_summary(silver_lf: pl.LazyFrame) -> dict[str, int]:
-    """Get summary stats for S1 patients."""
+def get_patient_summary(sources_lf: pl.LazyFrame) -> dict[str, int]:
+    """Get summary stats for sources patients."""
     return (
-        silver_lf.select(
+        sources_lf.select(
             pl.len().alias("total_patients"),
             pl.col("name").drop_nulls().len().alias("with_name"),
             pl.col("birthDate").drop_nulls().len().alias("with_birth_date"),
@@ -21,10 +21,10 @@ def get_patient_summary(silver_lf: pl.LazyFrame) -> dict[str, int]:
     )
 
 
-def get_condition_summary(silver_lf: pl.LazyFrame) -> dict[str, int]:
-    """Get summary stats for S1 conditions."""
+def get_condition_summary(sources_lf: pl.LazyFrame) -> dict[str, int]:
+    """Get summary stats for sources conditions."""
     return (
-        silver_lf.select(
+        sources_lf.select(
             pl.len().alias("total_conditions"),
             pl.col("subject").drop_nulls().len().alias("with_subject"),
             pl.col("code").drop_nulls().len().alias("with_code"),
@@ -37,10 +37,10 @@ def get_condition_summary(silver_lf: pl.LazyFrame) -> dict[str, int]:
     )
 
 
-def get_observation_summary(silver_lf: pl.LazyFrame) -> dict[str, int]:
-    """Get summary stats for S1 observations."""
+def get_observation_summary(sources_lf: pl.LazyFrame) -> dict[str, int]:
+    """Get summary stats for sources observations."""
     return (
-        silver_lf.select(
+        sources_lf.select(
             pl.len().alias("total_observations"),
             pl.col("status").drop_nulls().len().alias("with_status"),
             pl.col("subject").drop_nulls().len().alias("with_subject"),

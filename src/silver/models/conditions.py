@@ -1,13 +1,16 @@
-"""S2 Condition: Domain-modeled from FHIR source.
+"""Condition model: Domain-modeled from sources.
 
-S2 transforms FHIR Condition toward a domain-specific analytical model:
+Transforms sources Condition toward a domain-specific analytical model:
 - Flattens nested structures (code.coding → code_system, code, code_display)
 - Extracts patient reference (subject.reference → patient_id)
 - Normalizes onset/abatement dates
 - Prepares data for domain-level analytics
 
+Input: Sources Condition LazyFrame (cleaned bronze with source metadata)
+Output: Typed Condition LazyFrame with flattened domain model
+
 This is source-specific modeling - it knows about FHIR structures but transforms
-them toward common domain concepts. For unified multi-source models, see S3.
+them toward common domain concepts. For unified multi-source models, see domains.
 """
 
 from typing import Any
@@ -119,7 +122,7 @@ def extract_asserter_display(asserter: dict[str, Any] | None) -> str | None:
 
 
 def _transform_row(row: dict[str, Any]) -> dict[str, Any]:
-    """Transform a single bronze condition row to S2 domain model."""
+    """Transform a single sources condition row to domain model."""
     subject = row.get("subject") or {}
     category_list = row.get("category")
     code_obj = row.get("code") or {}
@@ -127,8 +130,8 @@ def _transform_row(row: dict[str, Any]) -> dict[str, Any]:
 
     return {
         "id": row.get("id"),
-        "source_file": row.get("_source_file"),
-        "source_bundle": row.get("_source_bundle"),
+        "source_file": row.get("source_file"),
+        "source_bundle": row.get("source_bundle"),
         "patient_id": extract_patient_id(subject),
         "patient_display": extract_patient_display(subject),
         "category_code": extract_category_code(category_list),
@@ -149,27 +152,27 @@ def _transform_row(row: dict[str, Any]) -> dict[str, Any]:
 # =============================================================================
 
 
-def get_condition(source_df: pl.DataFrame) -> Condition:
-    """Get S2 condition by transforming source data.
+def get_condition(sources_lf: pl.LazyFrame) -> Condition:
+    """Get condition model by transforming sources data.
 
     Args:
-        source_df: Bronze Condition DataFrame
+        sources_lf: Sources Condition LazyFrame (from silver.sources.conditions.transform_condition)
 
     Returns:
-        Typed Condition LazyFrame with S2 domain model
+        Typed Condition LazyFrame with domain model
     """
-    return transform(source_df)
+    return transform(sources_lf)
 
 
-def transform(source_df: pl.DataFrame) -> Condition:
-    """Transform source DataFrame to S2 condition model.
+def transform(sources_lf: pl.LazyFrame) -> Condition:
+    """Transform sources LazyFrame to condition domain model.
 
     Args:
-        source_df: Bronze Condition DataFrame
+        sources_lf: Sources Condition LazyFrame (from silver.sources.conditions.transform_condition)
 
     Returns:
-        Typed Condition LazyFrame with S2 domain model
+        Typed Condition LazyFrame with domain model
     """
-    bronze_rows = source_df.to_dicts()
-    silver_rows = [_transform_row(row) for row in bronze_rows]
-    return Condition.from_dicts(silver_rows, CONDITION_SCHEMA)
+    sources_rows = sources_lf.collect().to_dicts()
+    model_rows = [_transform_row(row) for row in sources_rows]
+    return Condition.from_dicts(model_rows, CONDITION_SCHEMA)

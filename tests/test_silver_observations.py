@@ -1,10 +1,13 @@
 import polars as pl
 
-from src.silver.s2.observations import get_observation
+from src.silver.models.observations import get_observation as get_observation_model
+from src.silver.sources.observations import get_observation as get_observation_source
 from src.validations.observations import validate_observation
 
 
 def test_get_observation_flattens_and_unnests() -> None:
+    """Test models observation transformation via sources."""
+    # Bronze data (as loaded from FHIR bundles)
     bronze_row = {
         "resourceType": "Observation",
         "id": "obs-1",
@@ -13,6 +16,9 @@ def test_get_observation_flattens_and_unnests() -> None:
         "status": "final",
         "subject": {"reference": "Patient/p1"},
         "effectiveDateTime": "2024-01-02T03:04:05Z",
+        "encounter": None,
+        "issued": None,
+        "performer": [{"reference": "Practitioner/pr1"}],
         "category": [
             {
                 "coding": [
@@ -40,7 +46,27 @@ def test_get_observation_flattens_and_unnests() -> None:
             "system": "http://unitsofmeasure.org",
             "code": "mm[Hg]",
         },
-        "performer": [{"reference": "Practitioner/pr1"}],
+        "valueCodeableConcept": None,
+        "valueString": None,
+        "valueBoolean": None,
+        "valueInteger": None,
+        "valueRange": None,
+        "valueRatio": None,
+        "valueSampledData": None,
+        "valueTime": None,
+        "valueDateTime": None,
+        "valuePeriod": None,
+        "effectivePeriod": None,
+        "dataAbsentReason": None,
+        "interpretation": None,
+        "note": None,
+        "bodySite": None,
+        "method": None,
+        "specimen": None,
+        "device": None,
+        "referenceRange": None,
+        "hasMember": None,
+        "derivedFrom": None,
         "component": [
             {
                 "code": {
@@ -57,7 +83,10 @@ def test_get_observation_flattens_and_unnests() -> None:
         ],
     }
 
-    obs = get_observation(pl.DataFrame([bronze_row])).collect()
+    # Transform: bronze → sources → models
+    bronze_df = pl.DataFrame([bronze_row])
+    sources_lf = get_observation_source(bronze_df)
+    obs = get_observation_model(sources_lf).collect()
     assert obs.height == 1
     row = obs.row(0, named=True)
     assert row["id"] == "obs-1"
@@ -83,6 +112,7 @@ def test_get_observation_flattens_and_unnests() -> None:
 
 
 def test_validate_observation_populates_errors() -> None:
+    """Test validation catches missing/invalid fields via sources → models flow."""
     bronze_row = {
         "resourceType": "Observation",
         "id": "obs-bad",
@@ -91,10 +121,41 @@ def test_validate_observation_populates_errors() -> None:
         "status": "not-a-status",
         "code": {"text": None, "coding": []},
         "subject": None,
+        "encounter": None,
+        "effectiveDateTime": None,
+        "effectivePeriod": None,
+        "issued": None,
+        "performer": None,
+        "category": None,
+        "valueQuantity": None,
+        "valueCodeableConcept": None,
+        "valueString": None,
+        "valueBoolean": None,
+        "valueInteger": None,
+        "valueRange": None,
+        "valueRatio": None,
+        "valueSampledData": None,
+        "valueTime": None,
+        "valueDateTime": None,
+        "valuePeriod": None,
+        "dataAbsentReason": None,
+        "interpretation": None,
+        "note": None,
+        "bodySite": None,
+        "method": None,
+        "specimen": None,
+        "device": None,
+        "referenceRange": None,
+        "hasMember": None,
+        "derivedFrom": None,
+        "component": None,
     }
 
-    silver = get_observation(pl.DataFrame([bronze_row]))
-    validated = validate_observation(silver).collect()
+    # Transform: bronze → sources → models
+    bronze_df = pl.DataFrame([bronze_row])
+    sources_lf = get_observation_source(bronze_df)
+    models_lf = get_observation_model(sources_lf)
+    validated = validate_observation(models_lf).collect()
     errors = validated.item(0, "validation_errors")
     assert "status_valid" in errors
     assert "code_present" in errors
