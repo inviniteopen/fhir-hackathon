@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
+from typing import Callable
 
 import duckdb
 import polars as pl
@@ -11,10 +12,10 @@ import polars as pl
 from src.bronze import get_table_summary, load_bundles_to_tables
 from src.constants import Schema
 from src.gold import create_observations_per_patient
-from src.reporting.models_summaries import (
-    get_condition_summary,
-    get_observation_summary,
-    get_patient_summary,
+from src.reporting.etl_reporting import (
+    print_bronze_summary,
+    print_gold_summary,
+    print_silver_summary,
 )
 from src.silver.models.conditions import get_condition as get_condition_model
 from src.silver.models.observations import get_observation as get_observation_model
@@ -22,13 +23,6 @@ from src.silver.models.patients import get_patient as get_patient_model
 from src.silver.sources.conditions import get_condition as get_condition_source
 from src.silver.sources.observations import get_observation as get_observation_source
 from src.silver.sources.patients import get_patient as get_patient_source
-from src.reporting.validation_reports import (
-    get_validation_report as get_condition_validation_report,
-)
-from src.reporting.validation_reports import (
-    get_validation_report as get_observation_validation_report,
-)
-from src.reporting.validation_reports import get_validation_report
 
 DEFAULT_INPUT_DIR = Path(__file__).resolve().parent / "data" / "EPS"
 DEFAULT_DB_PATH = Path(__file__).resolve().parent / "fhir.duckdb"
@@ -65,6 +59,17 @@ def save_silver_tables(
     con.unregister("silver_observation_temp")
 
 
+def build_silver_frame(
+    con: duckdb.DuckDBPyConnection,
+    table: str,
+    source_fn: Callable[[pl.DataFrame], pl.LazyFrame],
+    model_fn: Callable[[pl.LazyFrame], pl.LazyFrame],
+) -> pl.LazyFrame:
+    """Load bronze table and return its silver model LazyFrame."""
+    bronze_df = con.execute(f"SELECT * FROM {Schema.BRONZE}.{table}").pl()
+    return model_fn(source_fn(bronze_df))
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Load FHIR Bundle JSON files into DuckDB tables for analysis."
@@ -98,34 +103,35 @@ def main() -> None:
 
     # Print bronze summary
     summary = get_table_summary(con)
-    total_resources = sum(summary.values())
-
-    print(f"Loaded {len(summary)} resource types ({total_resources} total resources)")
-    print()
-    print("Bronze tables:")
-    for table_name, count in summary.items():
-        print(f"  {table_name}: {count}")
+    print_bronze_summary(summary)
 
     # Transform bronze → sources → models (in-memory only by default)
     print()
     print("Transforming to silver layer...")
 
     # Patient transformation: bronze → sources → models
-    bronze_patient_df = con.execute(f"SELECT * FROM {Schema.BRONZE}.patient").pl()
-    sources_patient_lf = get_patient_source(bronze_patient_df)
-    patient_lf = get_patient_model(sources_patient_lf)
+    patient_lf = build_silver_frame(
+        con,
+        "patient",
+        get_patient_source,
+        get_patient_model,
+    )
 
     # Condition transformation: bronze → sources → models
-    bronze_condition_df = con.execute(f"SELECT * FROM {Schema.BRONZE}.condition").pl()
-    sources_condition_lf = get_condition_source(bronze_condition_df)
-    condition_lf = get_condition_model(sources_condition_lf)
+    condition_lf = build_silver_frame(
+        con,
+        "condition",
+        get_condition_source,
+        get_condition_model,
+    )
 
     # Observation transformation: bronze → sources → models
-    bronze_observation_df = con.execute(
-        f"SELECT * FROM {Schema.BRONZE}.observation"
-    ).pl()
-    sources_observation_lf = get_observation_source(bronze_observation_df)
-    observation_lf = get_observation_model(sources_observation_lf)
+    observation_lf = build_silver_frame(
+        con,
+        "observation",
+        get_observation_source,
+        get_observation_model,
+    )
 
     # Optionally save silver tables for debugging
     if args.debug:
@@ -148,80 +154,12 @@ def main() -> None:
     )
 
     # Print silver summary (computed from in-memory LazyFrames)
-    patient_summary = get_patient_summary(patient_lf)
-    validation_report = get_validation_report(patient_lf)
-    condition_summary = get_condition_summary(condition_lf)
-    condition_validation_report = get_condition_validation_report(
-        condition_lf
-    )
-    observation_summary = get_observation_summary(observation_lf)
-    observation_validation_report = get_observation_validation_report(
-        observation_lf
-    )
+    print_silver_summary(patient_lf, condition_lf, observation_lf)
 
-    print()
-    print("Silver layer (in-memory):")
-    print(f"  patient: {patient_summary['total_patients']}")
-    print(f"  condition: {condition_summary['total_conditions']}")
-    print(f"  observation: {observation_summary['total_observations']}")
-
-    gold_patients = con.execute(
+    observations_per_patient = con.execute(
         f"SELECT COUNT(*) FROM {Schema.GOLD}.observations_per_patient"
     ).fetchone()[0]
-    print()
-    print("Gold tables:")
-    print(f"  {Schema.GOLD}.observations_per_patient: {gold_patients}")
-
-    print()
-    print("Patient data quality:")
-    for field, count in patient_summary.items():
-        if field != "total_patients":
-            pct = count / patient_summary["total_patients"] * 100
-            print(f"  {field}: {count} ({pct:.0f}%)")
-
-    print()
-    print("Patient validation results:")
-    print(f"  Valid: {validation_report['valid_records']}")
-    print(f"  Invalid: {validation_report['invalid_records']}")
-    print(f"  Validity rate: {validation_report['validity_rate']:.1%}")
-    if validation_report["errors_by_rule"]:
-        print("  Errors by rule:")
-        for err in validation_report["errors_by_rule"]:
-            print(f"    {err['error']}: {err['count']}")
-
-    print()
-    print("Condition data quality:")
-    for field, count in condition_summary.items():
-        if field != "total_conditions":
-            pct = count / condition_summary["total_conditions"] * 100
-            print(f"  {field}: {count} ({pct:.0f}%)")
-
-    print()
-    print("Condition validation results:")
-    print(f"  Valid: {condition_validation_report['valid_records']}")
-    print(f"  Invalid: {condition_validation_report['invalid_records']}")
-    print(f"  Validity rate: {condition_validation_report['validity_rate']:.1%}")
-    if condition_validation_report["errors_by_rule"]:
-        print("  Errors by rule:")
-        for err in condition_validation_report["errors_by_rule"]:
-            print(f"    {err['error']}: {err['count']}")
-
-    print()
-    print("Observation data quality:")
-    for field, count in observation_summary.items():
-        if field != "total_observations":
-            pct = count / observation_summary["total_observations"] * 100
-            print(f"  {field}: {count} ({pct:.0f}%)")
-
-    print()
-    print("Observation validation results:")
-    print(f"  Valid: {observation_validation_report['valid_records']}")
-    print(f"  Invalid: {observation_validation_report['invalid_records']}")
-    print(f"  Validity rate: {observation_validation_report['validity_rate']:.1%}")
-    if observation_validation_report["errors_by_rule"]:
-        print("  Errors by rule:")
-        for err in observation_validation_report["errors_by_rule"]:
-            print(f"    {err['error']}: {err['count']}")
+    print_gold_summary(Schema.GOLD, observations_per_patient)
 
     con.close()
 
