@@ -2,7 +2,6 @@ import polars as pl
 
 from src.silver.models.observations import get_observation as get_observation_model
 from src.silver.sources.observations import get_observation as get_observation_source
-from src.silver.models.observations import validate_observation
 
 
 def test_get_observation_flattens_and_unnests() -> None:
@@ -155,7 +154,7 @@ def test_validate_observation_populates_errors() -> None:
     bronze_df = pl.DataFrame([bronze_row])
     sources_lf = get_observation_source(bronze_df)
     models_lf = get_observation_model(sources_lf)
-    validated = validate_observation(models_lf).collect()
+    validated = models_lf.collect()
     errors = validated.item(0, "validation_errors")
     assert "status_valid" in errors
     assert "code_present" in errors

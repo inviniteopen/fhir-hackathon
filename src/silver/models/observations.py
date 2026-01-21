@@ -151,13 +151,3 @@ def transform(sources_lf: pl.LazyFrame) -> Observation:
         validate=False,
     )
 
-
-def validate_observation(model_lf: pl.LazyFrame) -> Observation:
-    """Validate observation model and populate validation_errors column."""
-    validated_lf = _with_validation_errors(model_lf)
-    return Observation.from_df(
-        validated_lf.select(list(OBSERVATION_SCHEMA.keys())),
-        validate=False,
-    )
-
-

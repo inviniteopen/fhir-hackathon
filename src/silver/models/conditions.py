@@ -119,13 +119,3 @@ def transform(sources_lf: pl.LazyFrame) -> Condition:
     model_lf = _with_validation_errors(sources_lf)
     return Condition.from_df(model_lf.select(list(CONDITION_SCHEMA.keys())), validate=True)
 
-
-def validate_condition(model_lf: pl.LazyFrame) -> Condition:
-    """Validate condition model and populate validation_errors column."""
-    validated_lf = _with_validation_errors(model_lf)
-    return Condition.from_df(
-        validated_lf.select(list(CONDITION_SCHEMA.keys())),
-        validate=False,
-    )
-
-

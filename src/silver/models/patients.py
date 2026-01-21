@@ -112,13 +112,3 @@ def transform(sources_lf: pl.LazyFrame) -> Patient:
     model_lf = _with_validation_errors(sources_lf)
     return Patient.from_df(model_lf.select(list(PATIENT_SCHEMA.keys())), validate=True)
 
-
-def validate_patient(model_lf: pl.LazyFrame) -> Patient:
-    """Validate patient model and populate validation_errors column."""
-    validated_lf = _with_validation_errors(model_lf)
-    return Patient.from_df(
-        validated_lf.select(list(PATIENT_SCHEMA.keys())),
-        validate=False,
-    )
-
-

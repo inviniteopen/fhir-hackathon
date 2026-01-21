@@ -29,9 +29,6 @@ from src.reporting.validation_reports import (
     get_validation_report as get_observation_validation_report,
 )
 from src.reporting.validation_reports import get_validation_report
-from src.silver.models.conditions import validate_condition
-from src.silver.models.observations import validate_observation
-from src.silver.models.patients import validate_patient
 
 DEFAULT_INPUT_DIR = Path(__file__).resolve().parent / "data" / "EPS"
 DEFAULT_DB_PATH = Path(__file__).resolve().parent / "fhir.duckdb"
@@ -116,31 +113,28 @@ def main() -> None:
     # Patient transformation: bronze → sources → models
     bronze_patient_df = con.execute(f"SELECT * FROM {Schema.BRONZE}.patient").pl()
     sources_patient_lf = get_patient_source(bronze_patient_df)
-    models_patient_lf = get_patient_model(sources_patient_lf)
-    validated_patient_lf = validate_patient(models_patient_lf)
+    patient_lf = get_patient_model(sources_patient_lf)
 
     # Condition transformation: bronze → sources → models
     bronze_condition_df = con.execute(f"SELECT * FROM {Schema.BRONZE}.condition").pl()
     sources_condition_lf = get_condition_source(bronze_condition_df)
-    models_condition_lf = get_condition_model(sources_condition_lf)
-    validated_condition_lf = validate_condition(models_condition_lf)
+    condition_lf = get_condition_model(sources_condition_lf)
 
     # Observation transformation: bronze → sources → models
     bronze_observation_df = con.execute(
         f"SELECT * FROM {Schema.BRONZE}.observation"
     ).pl()
     sources_observation_lf = get_observation_source(bronze_observation_df)
-    models_observation_lf = get_observation_model(sources_observation_lf)
-    validated_observation_lf = validate_observation(models_observation_lf)
+    observation_lf = get_observation_model(sources_observation_lf)
 
     # Optionally save silver tables for debugging
     if args.debug:
         print("  (debug mode: writing silver tables to DB)")
         save_silver_tables(
             con,
-            validated_patient_lf,
-            validated_condition_lf,
-            validated_observation_lf,
+            patient_lf,
+            condition_lf,
+            observation_lf,
         )
 
     # Build gold layer from silver LazyFrames
@@ -149,20 +143,20 @@ def main() -> None:
     print("Building gold layer...")
     create_observations_per_patient(
         con,
-        patient_lf=validated_patient_lf,
-        observation_lf=validated_observation_lf,
+        patient_lf=patient_lf,
+        observation_lf=observation_lf,
     )
 
     # Print silver summary (computed from in-memory LazyFrames)
-    patient_summary = get_patient_summary(validated_patient_lf)
-    validation_report = get_validation_report(validated_patient_lf)
-    condition_summary = get_condition_summary(validated_condition_lf)
+    patient_summary = get_patient_summary(patient_lf)
+    validation_report = get_validation_report(patient_lf)
+    condition_summary = get_condition_summary(condition_lf)
     condition_validation_report = get_condition_validation_report(
-        validated_condition_lf
+        condition_lf
     )
-    observation_summary = get_observation_summary(validated_observation_lf)
+    observation_summary = get_observation_summary(observation_lf)
     observation_validation_report = get_observation_validation_report(
-        validated_observation_lf
+        observation_lf
     )
 
     print()
