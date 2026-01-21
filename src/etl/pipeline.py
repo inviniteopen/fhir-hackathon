@@ -18,9 +18,7 @@ from src.silver.sources.observations import get_observation as get_observation_s
 from src.silver.sources.patients import get_patient as get_patient_source
 
 
-def run_bronze(
-    bundle_dir: Path, con: duckdb.DuckDBPyConnection
-) -> dict[str, int]:
+def run_bronze(bundle_dir: Path, con: duckdb.DuckDBPyConnection) -> dict[str, int]:
     """Load bronze tables and return a summary."""
     load_bronze_bundles_to_tables(bundle_dir, con)
     return get_bronze_table_summary(con)
@@ -61,8 +59,6 @@ def run_silver(
     return patient_lf, condition_lf, observation_lf
 
 
-def run_gold(
-    patient_lf: Patient, observation_lf: Observation
-) -> pl.LazyFrame:
+def run_gold(patient_lf: Patient, observation_lf: Observation) -> pl.LazyFrame:
     """Build gold layer LazyFrames."""
     return build_observations_per_patient(patient_lf, observation_lf)

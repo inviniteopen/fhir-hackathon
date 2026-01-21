@@ -72,4 +72,3 @@ def build_observations_per_patient(
     )
 
     return result
-

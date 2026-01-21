@@ -78,10 +78,9 @@ def print_silver_summary(
 
 def print_gold_summary(observations_per_patient_lf: pl.LazyFrame) -> None:
     """Print gold table counts."""
-    observations_per_patient = (
-        observations_per_patient_lf.select(pl.len().alias("total"))
-        .collect()["total"][0]
-    )
+    observations_per_patient = observations_per_patient_lf.select(
+        pl.len().alias("total")
+    ).collect()["total"][0]
     print()
     print("Gold tables:")
     print(f"  observations_per_patient: {observations_per_patient}")

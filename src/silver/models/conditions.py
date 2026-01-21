@@ -117,5 +117,6 @@ def transform(sources_lf: pl.LazyFrame) -> Condition:
         Typed Condition LazyFrame with domain model
     """
     model_lf = _with_validation_errors(sources_lf)
-    return Condition.from_df(model_lf.select(list(CONDITION_SCHEMA.keys())), validate=True)
-
+    return Condition.from_df(
+        model_lf.select(list(CONDITION_SCHEMA.keys())), validate=True
+    )

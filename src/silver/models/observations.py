@@ -150,4 +150,3 @@ def transform(sources_lf: pl.LazyFrame) -> Observation:
         model_lf.select(list(OBSERVATION_SCHEMA.keys())),
         validate=False,
     )
-

@@ -151,4 +151,3 @@ def get_bronze_table_summary(con: duckdb.DuckDBPyConnection) -> dict[str, int]:
         ).fetchone()[0]
         summary[f"{Schema.BRONZE}.{table_name}"] = count
     return summary
-
