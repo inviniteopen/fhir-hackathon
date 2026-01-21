@@ -2,7 +2,7 @@ import polars as pl
 
 from src.silver.models.observations import get_observation as get_observation_model
 from src.silver.sources.observations import get_observation as get_observation_source
-from src.validations.observations import validate_observation
+from src.silver.models.observations import validate_observation
 
 
 def test_get_observation_flattens_and_unnests() -> None:

@@ -22,19 +22,19 @@ from src.silver.models.patients import get_patient as get_patient_model
 from src.silver.sources.conditions import get_condition as get_condition_source
 from src.silver.sources.observations import get_observation as get_observation_source
 from src.silver.sources.patients import get_patient as get_patient_source
-from src.validations.conditions import (
+from src.silver.models.conditions import (
     get_validation_report as get_condition_validation_report,
 )
-from src.validations.conditions import (
+from src.silver.models.conditions import (
     validate_condition,
 )
-from src.validations.observations import (
+from src.silver.models.observations import (
     get_validation_report as get_observation_validation_report,
 )
-from src.validations.observations import (
+from src.silver.models.observations import (
     validate_observation,
 )
-from src.validations.patients import get_validation_report, validate_patient
+from src.silver.models.patients import get_validation_report, validate_patient
 
 DEFAULT_INPUT_DIR = Path(__file__).resolve().parent / "data" / "EPS"
 DEFAULT_DB_PATH = Path(__file__).resolve().parent / "fhir.duckdb"
