@@ -12,7 +12,7 @@ import polars as pl
 from src.bronze import get_table_summary, load_bundles_to_tables
 from src.constants import Schema
 from src.db.duckdb_io import connect_db, count_rows, write_lazyframe
-from src.gold import create_observations_per_patient
+from src.gold import build_observations_per_patient
 from src.reporting.etl_reporting import (
     print_bronze_summary,
     print_gold_summary,
@@ -50,6 +50,19 @@ def build_silver_frame(
     """Load bronze table and return its silver model LazyFrame."""
     bronze_df = con.execute(f"SELECT * FROM {Schema.BRONZE}.{table}").pl()
     return model_fn(source_fn(bronze_df))
+
+
+def build_gold_frame(
+    patient_lf: pl.LazyFrame,
+    observation_lf: pl.LazyFrame,
+) -> pl.LazyFrame:
+    """Build gold observations per patient LazyFrame."""
+    return build_observations_per_patient(patient_lf, observation_lf)
+
+
+def save_gold_tables(con: duckdb.DuckDBPyConnection, gold_lf: pl.LazyFrame) -> None:
+    """Save gold tables to DuckDB."""
+    write_lazyframe(con, Schema.GOLD, "observations_per_patient", gold_lf)
 
 
 def main() -> None:
@@ -129,11 +142,11 @@ def main() -> None:
 
     print()
     print("Building gold layer...")
-    create_observations_per_patient(
-        con,
-        patient_lf=patient_lf,
-        observation_lf=observation_lf,
+    gold_observations_lf = build_gold_frame(
+        patient_lf,
+        observation_lf,
     )
+    save_gold_tables(con, gold_observations_lf)
 
     # Print silver summary (computed from in-memory LazyFrames)
     print_silver_summary(patient_lf, condition_lf, observation_lf)
