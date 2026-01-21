@@ -8,10 +8,9 @@
 - Nested JSON data is flattened and stored to duckdb tables. New table is created per each resource type
 - Data layout follows the widely adopted medallion-pattern:
   - **Bronze** - Raw data with minimal changes (source metadata added)
-  - **Silver** - Progressively refined data in multiple stages:
-    - **S1** - Cleaned bronze: same structure as source, with normalization and source tracking
-    - **S2** - Domain-modeled: source data transformed toward domain concepts and flattened for analytics
-    - **S3** - Unified model: multiple sources merged into common schema (not yet implemented)
+  - **Silver** - Progressively refined data in two stages:
+    - **Sources** - Nested JSON values are unwrapped to a flat table structure
+    - **Models** - Validated data: each row is validated against data quality rules. Here, instead of dropping row, `validation_errors` column is populated with observed data quality issues
   - **Gold** - Aggregated data products for reporting and analysis
 - A marimo notebook ties everything together. It allows users to explore data in bronze, silver and gold layers through table UI and visualisations.
   - Static export of the notebook is available as [Notebook demo](https://inviniteopen.github.io/invinite.github.io/). Clone the repository for running interactive notebooks
