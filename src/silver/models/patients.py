@@ -122,21 +122,3 @@ def validate_patient(model_lf: pl.LazyFrame) -> Patient:
     )
 
 
-def get_valid_patients(validated_lf: pl.LazyFrame) -> Patient:
-    """Filter to only valid patients (no validation errors)."""
-    return Patient.from_df(
-        validated_lf.filter(pl.col("validation_errors").list.len() == 0).select(
-            list(PATIENT_SCHEMA.keys())
-        ),
-        validate=False,
-    )
-
-
-def get_invalid_patients(validated_lf: pl.LazyFrame) -> Patient:
-    """Filter to only invalid patients (has validation errors)."""
-    return Patient.from_df(
-        validated_lf.filter(pl.col("validation_errors").list.len() > 0).select(
-            list(PATIENT_SCHEMA.keys())
-        ),
-        validate=False,
-    )

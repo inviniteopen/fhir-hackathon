@@ -161,17 +161,3 @@ def validate_observation(model_lf: pl.LazyFrame) -> Observation:
     )
 
 
-def get_valid_observations(validated_lf: Observation) -> Observation:
-    """Filter to only valid observations (no validation errors)."""
-    return Observation.from_df(
-        validated_lf.filter(Observation.validation_errors.list.len() == 0),
-        validate=False,
-    )
-
-
-def get_invalid_observations(validated_lf: Observation) -> Observation:
-    """Filter to only invalid observations (has validation errors)."""
-    return Observation.from_df(
-        validated_lf.filter(Observation.validation_errors.list.len() > 0),
-        validate=False,
-    )

@@ -129,21 +129,3 @@ def validate_condition(model_lf: pl.LazyFrame) -> Condition:
     )
 
 
-def get_valid_conditions(validated_lf: pl.LazyFrame) -> Condition:
-    """Filter to only valid conditions (no validation errors)."""
-    return Condition.from_df(
-        validated_lf.filter(pl.col("validation_errors").list.len() == 0).select(
-            list(CONDITION_SCHEMA.keys())
-        ),
-        validate=False,
-    )
-
-
-def get_invalid_conditions(validated_lf: pl.LazyFrame) -> Condition:
-    """Filter to only invalid conditions (has validation errors)."""
-    return Condition.from_df(
-        validated_lf.filter(pl.col("validation_errors").list.len() > 0).select(
-            list(CONDITION_SCHEMA.keys())
-        ),
-        validate=False,
-    )
