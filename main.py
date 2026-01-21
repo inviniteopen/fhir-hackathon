@@ -8,7 +8,7 @@ from pathlib import Path
 import duckdb
 import polars as pl
 
-from src.db.duckdb_io import connect_db, count_rows, write_lazyframe
+from src.db.duckdb_io import connect_db, write_lazyframe
 from src.etl.pipeline import run_bronze, run_gold, run_silver
 from src.constants import Schema
 from src.reporting.etl_reporting import (
@@ -65,15 +65,15 @@ def main() -> None:
     if not args.input.exists():
         raise SystemExit(f"Input directory does not exist: {args.input}")
 
-    # Load bundles to bronze layer
     con = connect_db(args.db)
+
+    # Load bundles to bronze layer
     summary = run_bronze(args.input, con)
     print_bronze_summary(summary)
 
     # Transform bronze → sources → models (in-memory only by default)
     print()
     print("Transforming to silver layer...")
-
     patient_lf, condition_lf, observation_lf = run_silver(con)
 
     # Optionally save silver tables for debugging
@@ -86,22 +86,14 @@ def main() -> None:
             observation_lf,
         )
 
-    # Build gold layer from silver LazyFrames
+    print_silver_summary(patient_lf, condition_lf, observation_lf)
 
+    # Build gold layer from silver LazyFrames
     print()
     print("Building gold layer...")
     gold_observations_lf = run_gold(patient_lf, observation_lf)
     save_gold_tables(con, gold_observations_lf)
-
-    # Print silver summary (computed from in-memory LazyFrames)
-    print_silver_summary(patient_lf, condition_lf, observation_lf)
-
-    observations_per_patient = count_rows(
-        con,
-        Schema.GOLD,
-        "observations_per_patient",
-    )
-    print_gold_summary(Schema.GOLD, observations_per_patient)
+    print_gold_summary(gold_observations_lf)
 
     con.close()
 
