@@ -4,6 +4,9 @@ _January 19, 2026_
 
 Last weekend, [Invinite](https://www.invinite.fi/) participated in the [Finnish Health Data Hackathon](https://fhir.fi/hackathon/2026/finland). We joined the [Care Plans track focused on testing](https://fhir.fi/hackathon/2026/finland/care-plans#testing), where we explored whether a **Data as Software (DAS)** approach could be used for testing and validating synthetic FHIR data—both structurally and in terms of how realistic the data is.
 
+![Eetu Sutinen and Tommi Summanen at the Finnish Health Data Hackathon](.assets/hackathon.png)
+_Eetu Sutinen and Tommi Summanen representing Invinite at the hackathon_
+
 ## Why Synthetic Data Quality Matters
 
 1. **AI applications need representative distributions** - if test data doesn't reflect reality, you can't validate AI-generated insights
