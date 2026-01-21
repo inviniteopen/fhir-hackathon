@@ -21,13 +21,13 @@ def _():
     import duckdb
     import pandas as pd
 
-    from src.bronze.loader import get_bronze_table_summary
     from src.constants import Schema
+    from src.db.duckdb_io import get_table_summary
 
     return (
         Schema,
         duckdb,
-        get_bronze_table_summary,
+        get_table_summary,
         mo,
         pd,
         repo_root,
@@ -103,8 +103,8 @@ def _(mo):
 
 
 @app.cell
-def _(con, get_bronze_table_summary, pd):
-    summary = get_bronze_table_summary(con)
+def _(Schema, con, get_table_summary, pd):
+    summary = get_table_summary(con, Schema.BRONZE)
     summary_df = (
         pd.DataFrame([{"table": name, "rows": rows} for name, rows in summary.items()])
         .sort_values(["rows", "table"], ascending=[False, True])
