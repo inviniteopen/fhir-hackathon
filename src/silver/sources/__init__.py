@@ -1,10 +1,12 @@
 """Silver sources layer - cleaned bronze with source metadata.
 
-Sources preserves the original FHIR structure but adds:
+Sources adds:
 - Source tracking (source_file, source_bundle)
 - Null/empty value normalization
+- Stable, known columns for select resources that need flattening
 
-The nested FHIR structures remain intact. For domain-modeled flat structures, see models.
+Most sources preserve the original FHIR structure; some (e.g., Condition) are
+flattened to provide a stable contract for downstream models.
 """
 
 from src.silver.sources.conditions import get_condition
