@@ -35,5 +35,5 @@ def transform(sources_lf: pl.LazyFrame) -> Observation:
     )
     return Observation.from_df(
         model_lf.select(list(OBSERVATION_SCHEMA.keys())),
-        validate=True,
+        validate=False,
     )

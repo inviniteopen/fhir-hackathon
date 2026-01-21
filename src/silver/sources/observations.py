@@ -139,12 +139,15 @@ def extract_value_fields(value_obj: dict[str, Any]) -> dict[str, Any]:
 
 def extract_performer_fields(performer_list: list[dict[str, Any]]) -> dict[str, list]:
     """Extract performer references and IDs from performer array."""
-    performer_references: list[str | None] = []
-    performer_ids: list[str | None] = []
+    performer_references: list[str] = []
+    performer_ids: list[str] = []
     for performer in performer_list:
         performer_reference = extract_reference(performer)
-        performer_references.append(performer_reference)
-        performer_ids.append(extract_reference_id(performer_reference))
+        if performer_reference is not None:
+            performer_references.append(performer_reference)
+        performer_id = extract_reference_id(performer_reference)
+        if performer_id is not None:
+            performer_ids.append(performer_id)
     return {
         "performer_references": performer_references,
         "performer_ids": performer_ids,
